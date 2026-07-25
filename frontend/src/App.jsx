@@ -5091,6 +5091,7 @@ function ClanVaultPage({ member, readonly = false }) {
   });
   const [selectedTargetIds, setSelectedTargetIds] = useState([]);
   const [search, setSearch] = useState('');
+  const [targetSearch, setTargetSearch] = useState('');
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const [history, setHistory] = useState(null);
@@ -5116,6 +5117,7 @@ function ClanVaultPage({ member, readonly = false }) {
 
   const visibleBalances = balances;
   const filteredBalances = visibleBalances.filter((row) => normalize(row.characterName).includes(normalize(search)));
+  const filteredTargetBalances = visibleBalances.filter((row) => normalize(row.characterName).includes(normalize(targetSearch)));
   const totals = visibleBalances.reduce(
     (sum, row) => ({
       balance: sum.balance + Number(row.balance || 0),
@@ -5176,6 +5178,7 @@ function ClanVaultPage({ member, readonly = false }) {
         memo: '',
       });
       setSelectedTargetIds([]);
+      setTargetSearch('');
       await load();
       setMessage('금고 내용을 저장했습니다.');
       setFormOpen(false);
@@ -5260,23 +5263,42 @@ function ClanVaultPage({ member, readonly = false }) {
             </div>
             <form className="vault-form" onSubmit={submit}>
               {(mode === 'deposit' || mode === 'withdraw') && (
-                <label>
-                  대상 클랜원
-                  <select required value={form.targetMemberId} onChange={(e) => setForm({ ...form, targetMemberId: e.target.value })}>
-                    <option value="">클랜원을 선택해 주세요</option>
-                    {balances.map((row) => (
-                      <option key={row.memberId} value={row.memberId}>
-                        {row.characterName}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                <>
+                  <label>
+                    닉네임 검색
+                    <input
+                      autoFocus
+                      type="search"
+                      placeholder="클랜원 닉네임을 입력하세요"
+                      value={targetSearch}
+                      onChange={(e) => setTargetSearch(e.target.value)}
+                    />
+                  </label>
+                  <label>
+                    대상 클랜원
+                    <select required value={form.targetMemberId} onChange={(e) => setForm({ ...form, targetMemberId: e.target.value })}>
+                      <option value="">클랜원을 선택해 주세요</option>
+                      {filteredTargetBalances.map((row) => (
+                        <option key={row.memberId} value={row.memberId}>
+                          {row.characterName}
+                        </option>
+                      ))}
+                    </select>
+                    {targetSearch && !filteredTargetBalances.length && <small className="vault-target-empty">검색 결과가 없습니다.</small>}
+                  </label>
+                </>
               )}
               {mode === 'distribute' && (
                 <div className="vault-target-picker">
                   <b>분배 대상 클랜원</b>
+                  <input
+                    type="search"
+                    placeholder="클랜원 닉네임 검색"
+                    value={targetSearch}
+                    onChange={(e) => setTargetSearch(e.target.value)}
+                  />
                   <div className="vault-target-list">
-                    {balances.map((row) => {
+                    {filteredTargetBalances.map((row) => {
                       const id = String(row.memberId);
                       return (
                         <label key={id} className={selectedTargetIds.includes(id) ? 'selected' : ''}>
@@ -5285,6 +5307,7 @@ function ClanVaultPage({ member, readonly = false }) {
                         </label>
                       );
                     })}
+                    {targetSearch && !filteredTargetBalances.length && <small className="vault-target-empty">검색 결과가 없습니다.</small>}
                   </div>
                 </div>
               )}
