@@ -90,7 +90,39 @@
 }
 
 @media (max-width: 720px) {
+  .notice-row-head {
+    flex-wrap: wrap;
+  }
+
+  .notice-actions {
+    margin-left: auto;
+  }
+
   .notice-image-preview {
     grid-template-columns: 1fr;
+  }
+
+  .notice-row {
+    padding: 12px;
+  }
+
+  .notice-image {
+    max-height: 60vh;
+  }
+}
+
+@media (max-width: 430px) {
+  .notice-row-head {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .notice-actions {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .notice-actions button {
+    flex: 1;
   }
 }

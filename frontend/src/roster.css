@@ -6,3 +6,41 @@
   font-size: 0.76rem;
   font-weight: 700;
 }
+
+@media (max-width: 800px) {
+  .roster-head {
+    flex-wrap: wrap;
+  }
+
+  .upload-zone {
+    min-height: 180px;
+  }
+
+  .scan-guide {
+    padding: 15px;
+  }
+
+  .ocr-review-panel {
+    padding: 13px;
+  }
+}
+
+@media (max-width: 430px) {
+  .roster-head {
+    flex-direction: column;
+    gap: 9px;
+  }
+
+  .local-badge {
+    white-space: normal;
+  }
+
+  .scan-result {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .match-state {
+    margin-left: 0;
+  }
+}

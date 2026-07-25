@@ -1040,3 +1040,25 @@
     min-width: 100%;
   }
 }
+
+@media (max-width: 430px) {
+  .vault-summary-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .vault-hero {
+    padding: 17px 14px;
+  }
+
+  .vault-hero-actions,
+  .distribution-title .page-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+    width: 100%;
+  }
+
+  .vault-hero-actions button,
+  .distribution-title .page-actions button {
+    width: 100%;
+  }
+}
