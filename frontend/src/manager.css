@@ -1229,6 +1229,24 @@
   gap: 8px;
 }
 
+.batch-text-import {
+  width: min(420px, 100%);
+  min-height: 76px;
+  padding: 10px 12px;
+  resize: vertical;
+  border: 1px solid #c4b5fd;
+  border-radius: 10px;
+  background: #faf8ff;
+  color: #1f2a44;
+  font: inherit;
+  line-height: 1.45;
+}
+
+.batch-text-import:focus {
+  border-color: #7c3aed;
+  outline: 3px solid rgba(124, 58, 237, .12);
+}
+
 .batch-result {
   grid-column: 1 / -1;
   display: grid;

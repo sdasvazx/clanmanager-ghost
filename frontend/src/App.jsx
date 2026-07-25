@@ -393,6 +393,7 @@ const createBatchRowFromSlot = (slot, previous = {}) => ({
   progress: previous.progress || 0,
   savedRecord: previous.savedRecord || null,
   message: previous.message || '',
+  clipboardText: previous.clipboardText || '',
 });
 const buildBatchRowsFromActivitySettings = (activities = [], previousRows = []) => {
   const activeActivities = Array.isArray(activities) ? activities.filter((activity) => activity.active !== false) : [];
@@ -3175,14 +3176,7 @@ function Attendance({ member, setPage, mode = 'check' }) {
       })
       .catch((err) => setMessage(err.message));
   };
-  const importBatchNamesFromClipboard = async (key) => {
-    let clipboardText = '';
-    try {
-      if (!navigator.clipboard?.readText) throw new Error('clipboard-unavailable');
-      clipboardText = await navigator.clipboard.readText();
-    } catch {
-      clipboardText = window.prompt('분대 · 캐릭터명 · 위치 형식의 내용을 붙여넣어 주세요.') || '';
-    }
+  const importBatchNamesFromText = (key, clipboardText) => {
     const names = clipboardText
       .split(/\r?\n/)
       .filter((line) => line.length > 0)
@@ -3205,7 +3199,7 @@ function Attendance({ member, setPage, mode = 'check' }) {
       ambiguous: [],
       appliedCorrections: [],
       savedRecord: null,
-      message: `클립보드에서 ${names.length}명을 순서와 중복 그대로 가져왔습니다.`,
+      message: `입력한 명단에서 ${names.length}명을 순서와 중복 그대로 가져왔습니다.`,
     });
   };
 
@@ -3692,8 +3686,20 @@ function Attendance({ member, setPage, mode = 'check' }) {
                     <button type="button" className="outline-button no-margin" disabled={!row.files.length || row.scanning} onClick={() => scanBatchRow(row.key)}>
                       {row.scanning ? `인식 ${row.progress}%` : '글자인식'}
                     </button>
-                    <button type="button" className="outline-button no-margin clipboard-import-button" disabled={row.scanning} onClick={() => importBatchNamesFromClipboard(row.key)}>
-                      클립보드 복사
+                    <textarea
+                      className="batch-text-import"
+                      value={row.clipboardText}
+                      onChange={(event) => updateBatchRow(row.key, { clipboardText: event.target.value })}
+                      placeholder={'분대 [탭] 캐릭터명 [탭] 위치 형식을 붙여넣어 주세요.\n예: 1 [탭] 검고냥 [탭] 영원의 땅-3구역'}
+                      rows="3"
+                    />
+                    <button
+                      type="button"
+                      className="outline-button no-margin clipboard-import-button"
+                      disabled={row.scanning || !row.clipboardText.trim()}
+                      onClick={() => importBatchNamesFromText(row.key, row.clipboardText)}
+                    >
+                      명단 적용
                     </button>
                     <button type="button" className="primary-button no-margin" disabled={row.scanning} onClick={() => saveBatchRow(row.key)}>
                       인원체크 완료
