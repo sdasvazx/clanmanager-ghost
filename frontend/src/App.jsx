@@ -1819,7 +1819,6 @@ function MyInfo({ member, setPage }) {
 }
 
 function ProfileCard({ member, info, incompleteCollections = [], participationSummary, bossRecords = [], bossHistory = [], period = getParticipationPeriod(getCurrentParticipationPeriodIndex()), periodHistory = [], setPage }) {
-  const canSeeCombatPower = member?.role === 'ADMIN';
   const [rosterSettings] = useRosterSettings();
   const currentRow = useMemo(() => (participationSummary?.rows || []).find((row) => Number(row.memberId) === Number(info.memberId)), [participationSummary, info.memberId]);
   const activityColumns = participationSummary?.activityColumns || [];
@@ -1891,7 +1890,7 @@ function ProfileCard({ member, info, incompleteCollections = [], participationSu
             <span style={rosterBadgeStyle(rosterSettings, 'clans', info.guildName)}>클랜 {info.guildName || '-'}</span>
             <span style={rosterBadgeStyle(rosterSettings, 'classes', info.characterClass)}>클래스 {info.characterClass || '-'}</span>
             <span>Lv.{info.level || 0}</span>
-            {canSeeCombatPower && <span>전투력 {formatNumber(info.combatPower)}</span>}
+            <span>전투력 {formatNumber(info.combatPower)}</span>
           </div>
         </div>
         {setPage && (
