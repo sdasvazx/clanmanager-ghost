@@ -568,6 +568,11 @@
   color: #b77900;
 }
 
+.role-pill.photographer {
+  background: #e8f7f1;
+  color: #16785b;
+}
+
 .role-pill.member {
   background: #edf3fa;
   color: #52627a;
