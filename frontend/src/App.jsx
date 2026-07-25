@@ -1049,6 +1049,24 @@ function namesFromText(value) {
   ];
 }
 
+function rosterNamesFromText(value) {
+  return String(value ?? '')
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const columns = line.includes('\t')
+        ? line.split('\t').map((column) => column.trim()).filter(Boolean)
+        : line.split(/\s+/).map((column) => column.trim()).filter(Boolean);
+
+      if (/^\d+$/.test(columns[0] || '') && columns.length >= 2) {
+        return columns[1];
+      }
+      return columns.length === 1 ? columns[0] : '';
+    })
+    .filter((name) => name && !/^(캐릭터명|닉네임|이름)$/i.test(name));
+}
+
 function rouletteTextByClan(rows) {
   const groups = (Array.isArray(rows) ? rows : []).reduce((acc, row) => {
     const name = row?.characterName?.trim();
@@ -3177,13 +3195,9 @@ function Attendance({ member, setPage, mode = 'check' }) {
       .catch((err) => setMessage(err.message));
   };
   const importBatchNamesFromText = (key, clipboardText) => {
-    const names = clipboardText
-      .split(/\r?\n/)
-      .filter((line) => line.length > 0)
-      .map((line) => line.split('\t')[1])
-      .filter((name) => name !== undefined && name !== '');
+    const names = rosterNamesFromText(clipboardText);
     if (!names.length) {
-      updateBatchRow(key, { message: '탭으로 구분된 두 번째 열에서 닉네임을 찾지 못했습니다.' });
+      updateBatchRow(key, { message: '명단에서 캐릭터명을 찾지 못했습니다. 분대 · 캐릭터명 · 위치 형식인지 확인해 주세요.' });
       return;
     }
     const importedNames = names.map((name, index) => {
