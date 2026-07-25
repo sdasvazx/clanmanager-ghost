@@ -3597,8 +3597,7 @@
   }
 
   .profile-menu span,
-  .profile-menu i,
-  .logout-icon {
+  .profile-menu i {
     display: none;
   }
 
@@ -4103,6 +4102,48 @@
     width: 100%;
     margin-left: 0;
   }
+
+  /* Prevent iOS Safari from zooming focused form controls. */
+  input,
+  select,
+  textarea {
+    max-width: 100%;
+    font-size: 16px;
+  }
+
+  input,
+  select {
+    min-height: 40px;
+  }
+
+  .logout-icon {
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    min-height: 36px;
+    flex: none;
+    margin-left: 4px;
+    padding: 0;
+  }
+
+  .section-heading {
+    flex-wrap: wrap;
+  }
+
+  .white-card,
+  .modal-card,
+  .participation-detail-modal {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  img,
+  video,
+  canvas {
+    max-width: 100%;
+    height: auto;
+  }
 }
 
 @media (max-width: 430px) {
@@ -4116,6 +4157,15 @@
 
   .white-card {
     padding: 13px 10px;
+  }
+
+  .page-title h1 {
+    font-size: 1.25rem;
+  }
+
+  .metric strong,
+  .vault-balance strong {
+    font-size: 1.7rem;
   }
 
   .quick-actions > div,
