@@ -46,6 +46,7 @@ public class ClanVaultController {
     private static final Long VAULT_ID = 1L;
     private static final int HISTORY_PAGE_SIZE = 50;
     private static final int MAX_HISTORY_PAGES = 10;
+    private static final boolean VAULT_BALANCE_LIMIT_ENABLED = false;
     private static final String CLAIM_STATUS_PENDING = "\uC811\uC218";
     private static final String CLAIM_STATUS_APPROVED = "\uC9C0\uAE09\uC644\uB8CC";
     private static final String CLAIM_STATUS_REJECTED = "\uBC18\uB824";
@@ -306,7 +307,7 @@ public class ClanVaultController {
             } else {
                 ClanVault vault = getOrCreateVaultWithLock();
                 long available = getAvailableDiamonds(vault);
-                if (available < approvedAmount) {
+                if (VAULT_BALANCE_LIMIT_ENABLED && available < approvedAmount) {
                     throw new IllegalArgumentException("클랜금고 가용 다이아가 부족합니다. 가용 다이아: " + available);
                 }
                 vault.setBalanceDiamonds(vault.getBalanceDiamonds() - approvedAmount);
@@ -350,7 +351,7 @@ public class ClanVaultController {
         Member targetMember = findRequiredMember(request.getTargetMemberId(), "분배받을 클랜원을 선택해 주세요.");
         ClanVault vault = getOrCreateVaultWithLock();
         long availableDiamonds = getAvailableDiamonds(vault);
-        if (availableDiamonds < amount) {
+        if (VAULT_BALANCE_LIMIT_ENABLED && availableDiamonds < amount) {
             throw new IllegalArgumentException("클랜금고 가용 다이아가 부족합니다. 가용 다이아: " + availableDiamonds);
         }
         vault.setBalanceDiamonds(vault.getBalanceDiamonds() - amount);
@@ -406,7 +407,7 @@ public class ClanVaultController {
         long amount = requirePositiveAmount(request.getAmountDiamonds());
         ClanVault vault = getOrCreateVaultWithLock();
         long availableDiamonds = getAvailableDiamonds(vault);
-        if (availableDiamonds < amount) {
+        if (VAULT_BALANCE_LIMIT_ENABLED && availableDiamonds < amount) {
             throw new IllegalArgumentException("클랜금고 가용 다이아가 부족합니다. 가용 다이아: " + availableDiamonds);
         }
         vault.setBalanceDiamonds(vault.getBalanceDiamonds() - amount);

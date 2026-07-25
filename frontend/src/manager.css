@@ -1550,6 +1550,11 @@
   padding-bottom: 12px;
 }
 
+.clipboard-import-button {
+  border-color: #8b5cf6;
+  color: #6d28d9;
+}
+
 .boss-history-search {
   align-items: end;
   flex-wrap: wrap;
