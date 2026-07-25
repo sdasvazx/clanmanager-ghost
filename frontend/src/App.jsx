@@ -3175,6 +3175,39 @@ function Attendance({ member, setPage, mode = 'check' }) {
       })
       .catch((err) => setMessage(err.message));
   };
+  const importBatchNamesFromClipboard = async (key) => {
+    let clipboardText = '';
+    try {
+      if (!navigator.clipboard?.readText) throw new Error('clipboard-unavailable');
+      clipboardText = await navigator.clipboard.readText();
+    } catch {
+      clipboardText = window.prompt('분대 · 캐릭터명 · 위치 형식의 내용을 붙여넣어 주세요.') || '';
+    }
+    const names = clipboardText
+      .split(/\r?\n/)
+      .filter((line) => line.length > 0)
+      .map((line) => line.split('\t')[1])
+      .filter((name) => name !== undefined && name !== '');
+    if (!names.length) {
+      updateBatchRow(key, { message: '탭으로 구분된 두 번째 열에서 닉네임을 찾지 못했습니다.' });
+      return;
+    }
+    const importedNames = names.map((name, index) => {
+      const source = {
+        fileIndex: 1,
+        fileName: '클립보드 명단',
+        position: index + 1,
+      };
+      return classifyRecognizedName(name, [index + 1], [source]);
+    });
+    updateBatchRow(key, {
+      names: importedNames,
+      ambiguous: [],
+      appliedCorrections: [],
+      savedRecord: null,
+      message: `클립보드에서 ${names.length}명을 순서와 중복 그대로 가져왔습니다.`,
+    });
+  };
 
   const searchBossHistory = async (event) => {
     event.preventDefault();
@@ -3659,6 +3692,9 @@ function Attendance({ member, setPage, mode = 'check' }) {
                     <button type="button" className="outline-button no-margin" disabled={!row.files.length || row.scanning} onClick={() => scanBatchRow(row.key)}>
                       {row.scanning ? `인식 ${row.progress}%` : '글자인식'}
                     </button>
+                    <button type="button" className="outline-button no-margin clipboard-import-button" disabled={row.scanning} onClick={() => importBatchNamesFromClipboard(row.key)}>
+                      클립보드 복사
+                    </button>
                     <button type="button" className="primary-button no-margin" disabled={row.scanning} onClick={() => saveBatchRow(row.key)}>
                       인원체크 완료
                     </button>
@@ -3735,10 +3771,10 @@ function Attendance({ member, setPage, mode = 'check' }) {
                                   <div className="batch-position-row" key={`${fileGroup.fileIndex}-${positionGroup.position}`}>
                                     <b className="batch-position-title">{positionGroup.position}번 자리</b>
                                     <div className="draft-review-list position-review-list">
-                                      {positionGroup.names.map((item) => {
+                                      {positionGroup.names.map((item, itemIndex) => {
                                         const editing = batchEdit?.rowKey === row.key && batchEdit?.oldName === item.name;
                                         return (
-                                          <span className={item.matched ? 'draft-chip matched' : 'draft-chip review'} key={`${fileGroup.fileIndex}-${positionGroup.position}-${item.name}`}>
+                                          <span className={item.matched ? 'draft-chip matched' : 'draft-chip review'} key={`${fileGroup.fileIndex}-${positionGroup.position}-${item.name}-${itemIndex}`}>
                                             {editing ? (
                                               <>
                                                 <input
@@ -6103,6 +6139,7 @@ function DistributionClaimRequestAdminPanel({ member }) {
           <thead>
             <tr>
               <th>신청일</th>
+              <th>클랜명</th>
               <th>신청자</th>
               <th>신청금액</th>
               <th>메모</th>
@@ -6119,6 +6156,7 @@ function DistributionClaimRequestAdminPanel({ member }) {
               return (
                 <tr key={row.requestId}>
                   <td>{row.createdAt ? new Date(row.createdAt).toLocaleString('ko-KR') : '-'}</td>
+                  <td>{row.requesterClanName || '-'}</td>
                   <td>{row.requesterName || '-'}</td>
                   <td className="green-text">{money(row.amountDiamonds)}</td>
                   <td className="claim-request-memo">{row.memo || '-'}</td>
