@@ -8,3 +8,7 @@ spring:
     hibernate:
       ddl-auto: create-drop
     show-sql: false
+
+app:
+  vampir-notice:
+    initial-delay-ms: 3600000

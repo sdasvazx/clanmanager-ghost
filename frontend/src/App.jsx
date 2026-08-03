@@ -1611,24 +1611,107 @@ function NoticePanel({ member, notices, onReload }) {
   );
 }
 
+function VampirNoticePanel({ notices, newNoticeCount, connected, onClearNew }) {
+  const [expanded, setExpanded] = useState(true);
+
+  return (
+    <section className="white-card vampir-notices">
+      <div className="section-heading">
+        <div>
+          <div className="vampir-notice-title-row">
+            <h2>뱀피르 공식 공지</h2>
+            {newNoticeCount > 0 && (
+              <button type="button" className="vampir-new-badge" onClick={onClearNew} title="새 공지 표시 지우기">
+                NEW {newNoticeCount}
+              </button>
+            )}
+          </div>
+          <p className="subtle">넷마블 공식 포럼 공지를 10분마다 확인합니다.</p>
+        </div>
+        <div className="notice-actions">
+          <span className={connected ? 'sse-status connected' : 'sse-status'}>{connected ? '실시간 연결' : '재연결 중'}</span>
+          <button type="button" className="outline-button no-margin" onClick={() => setExpanded((value) => !value)}>
+            {expanded ? '공지 접기' : '공지 펼치기'}
+          </button>
+        </div>
+      </div>
+      {expanded &&
+        (notices.length ? (
+          <div className="vampir-notice-list">
+            {notices.map((notice) => (
+              <a className="vampir-notice-row" href={notice.articleUrl} target="_blank" rel="noreferrer" key={notice.articleId}>
+                {notice.thumbnailUrl && <img src={notice.thumbnailUrl} alt="" loading="lazy" />}
+                <div>
+                  <div className="vampir-notice-meta">
+                    <span className={notice.type === 'NOTICE' ? 'official' : ''}>{notice.type === 'NOTICE' ? '공지' : '일반'}</span>
+                    <time>{notice.regDate ? new Date(notice.regDate).toLocaleString('ko-KR') : '-'}</time>
+                  </div>
+                  <strong>{notice.title}</strong>
+                </div>
+                <span className="vampir-notice-open" aria-hidden="true">↗</span>
+              </a>
+            ))}
+          </div>
+        ) : (
+          <div className="empty-state compact">수집된 뱀피르 공식 공지가 없습니다.</div>
+        ))}
+    </section>
+  );
+}
+
 function Lobby({ member, setPage, favoritePages = [] }) {
   const [notices, setNotices] = useState([]);
+  const [vampirNotices, setVampirNotices] = useState([]);
+  const [newVampirNoticeCount, setNewVampirNoticeCount] = useState(0);
+  const [noticeStreamConnected, setNoticeStreamConnected] = useState(false);
   const [members, setMembers] = useState([]);
   const [participationSummary, setParticipationSummary] = useState(null);
   const [message, setMessage] = useState('');
   const currentPeriod = getParticipationPeriod(getCurrentParticipationPeriodIndex());
   const load = async () => {
-    const [noticeResult, memberResult, participationResult] = await Promise.allSettled([request('/notices'), request('/members'), request(`/participation?startDate=${currentPeriod.start}&endDate=${currentPeriod.end}`)]);
+    const [noticeResult, vampirNoticeResult, memberResult, participationResult] = await Promise.allSettled([
+      request('/notices'),
+      request('/notice?limit=5'),
+      request('/members'),
+      request(`/participation?startDate=${currentPeriod.start}&endDate=${currentPeriod.end}`),
+    ]);
 
     if (noticeResult.status === 'fulfilled') setNotices(Array.isArray(noticeResult.value) ? noticeResult.value : []);
+    if (vampirNoticeResult.status === 'fulfilled') setVampirNotices(Array.isArray(vampirNoticeResult.value) ? vampirNoticeResult.value : []);
     if (memberResult.status === 'fulfilled') setMembers(Array.isArray(memberResult.value) ? memberResult.value : []);
     if (participationResult.status === 'fulfilled') setParticipationSummary(participationResult.value || null);
 
-    const failed = [noticeResult.status === 'rejected' ? '공지' : null, memberResult.status === 'rejected' ? '클랜원' : null, participationResult.status === 'rejected' ? '참여율' : null].filter(Boolean);
+    const failed = [
+      noticeResult.status === 'rejected' ? '공지' : null,
+      vampirNoticeResult.status === 'rejected' ? '게임 공지' : null,
+      memberResult.status === 'rejected' ? '클랜원' : null,
+      participationResult.status === 'rejected' ? '참여율' : null,
+    ].filter(Boolean);
     setMessage(failed.length ? `${failed.join(', ')} 정보를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.` : '');
   };
   useEffect(() => {
     load();
+  }, []);
+  useEffect(() => {
+    const eventSource = new EventSource(`${API_BASE}/notice/subscribe`);
+    eventSource.onopen = () => setNoticeStreamConnected(true);
+    eventSource.onerror = () => setNoticeStreamConnected(false);
+    eventSource.addEventListener('newNotice', (event) => {
+      try {
+        const incoming = JSON.parse(event.data);
+        const rows = Array.isArray(incoming) ? incoming : [incoming];
+        setNewVampirNoticeCount((count) => count + rows.length);
+        setVampirNotices((current) => {
+          const byId = new Map([...rows, ...current].filter(Boolean).map((notice) => [notice.articleId, notice]));
+          return [...byId.values()]
+            .sort((left, right) => new Date(right.regDate || 0) - new Date(left.regDate || 0))
+            .slice(0, 5);
+        });
+      } catch {
+        // 잘못된 이벤트 한 건은 무시하고 EventSource의 자동 재연결은 그대로 사용합니다.
+      }
+    });
+    return () => eventSource.close();
   }, []);
   const participationRows = useMemo(() => participationSummary?.rows || [], [participationSummary]);
   const quickActions = [
@@ -1651,6 +1734,12 @@ function Lobby({ member, setPage, favoritePages = [] }) {
   return (
     <>
       <NoticePanel member={member} notices={notices} onReload={load} />
+      <VampirNoticePanel
+        notices={vampirNotices}
+        newNoticeCount={newVampirNoticeCount}
+        connected={noticeStreamConnected}
+        onClearNew={() => setNewVampirNoticeCount(0)}
+      />
       {message && <div className="info-banner warning-banner">{message}</div>}
       <div className="page-title center">
         <h1>클랜 종합정보</h1>
