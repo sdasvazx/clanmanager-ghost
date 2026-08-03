@@ -14,7 +14,7 @@ public record VampirNoticeResponseDto(
         LocalDateTime crawledAt,
         String articleUrl
 ) {
-    private static final String ARTICLE_URL_PREFIX = "https://forum.netmarble.com/vampir/view/";
+    private static final String ARTICLE_URL_PREFIX = "https://forum.netmarble.com/vampir/view/2/";
 
     public static VampirNoticeResponseDto from(VampirNotice notice) {
         return new VampirNoticeResponseDto(
