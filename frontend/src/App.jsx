@@ -1368,9 +1368,9 @@ function Shell({ member, page, setPage, onLogout, children, favorites = [], togg
   const totalAdminAlerts = adminAlerts.registrations.length + adminAlerts.distributionClaims.length + adminAlerts.itemRequests.length;
   useEffect(() => {
     if (member.role !== 'ADMIN') return undefined;
-    document.title = totalAdminAlerts ? `(${totalAdminAlerts}) 클랜 매니저` : '클랜 매니저';
+    document.title = totalAdminAlerts ? `(${totalAdminAlerts}) 귀신` : '귀신';
     return () => {
-      document.title = '클랜 매니저';
+      document.title = '귀신';
     };
   }, [member.role, totalAdminAlerts]);
   const openAlertPage = (target) => {
