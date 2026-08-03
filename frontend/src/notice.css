@@ -89,6 +89,121 @@
   background: #ffe1e8;
 }
 
+.vampir-notices {
+  border-color: #d9e7f7;
+}
+
+.vampir-notice-title-row,
+.vampir-notice-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.vampir-new-badge {
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 999px;
+  background: #ef4444;
+  color: #fff;
+  font-size: .72rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.sse-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #94a3b8;
+  font-size: .78rem;
+  font-weight: 800;
+}
+
+.sse-status::before {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: currentColor;
+  content: '';
+}
+
+.sse-status.connected {
+  color: #16a34a;
+}
+
+.vampir-notice-list {
+  display: grid;
+  margin-top: 12px;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+}
+
+.vampir-notice-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 13px 15px;
+  border-bottom: 1px solid #e7eef7;
+  background: #fff;
+  color: #1e293b;
+  text-decoration: none;
+  transition: background .15s ease;
+}
+
+.vampir-notice-row:nth-child(even) {
+  background: #f3f8ff;
+}
+
+.vampir-notice-row:last-child {
+  border-bottom: 0;
+}
+
+.vampir-notice-row:hover {
+  background: #eaf3ff;
+}
+
+.vampir-notice-row img {
+  width: 72px;
+  height: 44px;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+.vampir-notice-row strong {
+  display: block;
+  margin-top: 5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vampir-notice-meta {
+  color: #64748b;
+  font-size: .75rem;
+}
+
+.vampir-notice-meta span {
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: #e2e8f0;
+  color: #475569;
+  font-weight: 850;
+}
+
+.vampir-notice-meta span.official {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.vampir-notice-open {
+  color: #2563eb;
+  font-size: 1.1rem;
+  font-weight: 900;
+}
+
 @media (max-width: 720px) {
   .notice-row-head {
     flex-wrap: wrap;
@@ -104,6 +219,14 @@
 
   .notice-row {
     padding: 12px;
+  }
+
+  .vampir-notices .section-heading {
+    align-items: flex-start;
+  }
+
+  .vampir-notice-row {
+    padding: 11px 12px;
   }
 
   .notice-image {
@@ -124,5 +247,17 @@
 
   .notice-actions button {
     flex: 1;
+  }
+
+  .vampir-notices .notice-actions {
+    justify-content: space-between;
+  }
+
+  .vampir-notice-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .vampir-notice-row img {
+    display: none;
   }
 }
