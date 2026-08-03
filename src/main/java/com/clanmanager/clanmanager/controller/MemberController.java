@@ -507,12 +507,12 @@ public class MemberController {
             throw new IllegalArgumentException("존재하지 않는 권한입니다.");
         }
 
-        if (member.getRole() == MemberRole.ADMIN && nextRole == MemberRole.MEMBER
+        if (member.getRole() == MemberRole.ADMIN && nextRole != MemberRole.ADMIN
                 && memberRepository.countByRole(MemberRole.ADMIN) <= 1) {
-            throw new IllegalArgumentException("마지막 운영자는 일반 클랜원으로 변경할 수 없습니다.");
+            throw new IllegalArgumentException("마지막 운영자의 권한은 변경할 수 없습니다.");
         }
 
-        if (member.getMemberId().equals(adminMemberId) && nextRole == MemberRole.MEMBER) {
+        if (member.getMemberId().equals(adminMemberId) && nextRole != MemberRole.ADMIN) {
             throw new IllegalArgumentException("본인의 운영자 권한은 직접 해제할 수 없습니다.");
         }
 

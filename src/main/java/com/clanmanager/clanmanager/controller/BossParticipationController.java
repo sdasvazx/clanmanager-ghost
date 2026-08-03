@@ -121,9 +121,7 @@ public class BossParticipationController {
     @Transactional
     public BossParticipationResponseDto createRecord(@Valid @RequestBody BossParticipationRequestDto request) {
         Member admin = findMember(request.getCreatedByMemberId());
-        if (admin.getRole() != MemberRole.ADMIN) {
-            throw new SecurityException("\uC6B4\uC601\uC790\uB9CC \uBCF4\uC2A4 \uCC38\uC5EC\uB0B4\uC5ED\uC744 \uB4F1\uB85D\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4.");
-        }
+        requireAttendanceManager(admin);
 
         String bossName = clean(request.getBossName());
         if (bossName.isBlank()) {
@@ -302,6 +300,12 @@ public class BossParticipationController {
     private void requireAdmin(Member member, String message) {
         if (member.getRole() != MemberRole.ADMIN) {
             throw new SecurityException(message);
+        }
+    }
+
+    private void requireAttendanceManager(Member member) {
+        if (member.getRole() != MemberRole.ADMIN && member.getRole() != MemberRole.PHOTOGRAPHER) {
+            throw new SecurityException("운영자 또는 사진사만 보스 참여내역을 등록할 수 있습니다.");
         }
     }
 

@@ -37,6 +37,9 @@ const menu = [
 ];
 
 const adminOnlyPages = new Set(['ledger', 'book', 'roster', 'admin', 'member-admin', 'pinball', 'spec-history', 'activity-settings', 'all-items', 'general-settings']);
+const attendanceRoles = new Set(['ADMIN', 'PHOTOGRAPHER']);
+const canManageAttendance = (member) => attendanceRoles.has(member?.role);
+const roleLabel = (role) => (role === 'ADMIN' ? '운영자' : role === 'PHOTOGRAPHER' ? '사진사' : '클랜원');
 
 const adminCards = [
   ['✓', '출석체크', 'mint', 'attendance'],
@@ -1049,6 +1052,24 @@ function namesFromText(value) {
   ];
 }
 
+function rosterNamesFromText(value) {
+  return String(value ?? '')
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const columns = line.includes('\t')
+        ? line.split('\t').map((column) => column.trim()).filter(Boolean)
+        : line.split(/\s+/).map((column) => column.trim()).filter(Boolean);
+
+      if (/^\d+$/.test(columns[0] || '') && columns.length >= 2) {
+        return columns[1];
+      }
+      return columns.length === 1 ? columns[0] : '';
+    })
+    .filter((name) => name && !/^(캐릭터명|닉네임|이름)$/i.test(name));
+}
+
 function rouletteTextByClan(rows) {
   const groups = (Array.isArray(rows) ? rows : []).reduce((acc, row) => {
     const name = row?.characterName?.trim();
@@ -1650,7 +1671,7 @@ function Lobby({ member, setPage, favoritePages = [] }) {
   const load = async () => {
     const [noticeResult, vampirNoticeResult, memberResult, participationResult] = await Promise.allSettled([
       request('/notices'),
-      request('/notice?limit=10'),
+      request('/notice?limit=5'),
       request('/members'),
       request(`/participation?startDate=${currentPeriod.start}&endDate=${currentPeriod.end}`),
     ]);
@@ -1684,7 +1705,7 @@ function Lobby({ member, setPage, favoritePages = [] }) {
           const byId = new Map([...rows, ...current].filter(Boolean).map((notice) => [notice.articleId, notice]));
           return [...byId.values()]
             .sort((left, right) => new Date(right.regDate || 0) - new Date(left.regDate || 0))
-            .slice(0, 10);
+            .slice(0, 5);
         });
       } catch {
         // 잘못된 이벤트 한 건은 무시하고 EventSource의 자동 재연결은 그대로 사용합니다.
@@ -1698,11 +1719,15 @@ function Lobby({ member, setPage, favoritePages = [] }) {
     ['payment', '분배 조회'],
     ['book', '통장 조회'],
     ['mypage', '마이페이지'],
-    ...(member.role === 'ADMIN'
+    ...(canManageAttendance(member)
       ? [
           ['attendance', '출석 등록'],
-          ['pinball', '핀볼'],
-          ['member-admin', '클랜원 관리'],
+          ...(member.role === 'ADMIN'
+            ? [
+                ['pinball', '핀볼'],
+                ['member-admin', '클랜원 관리'],
+              ]
+            : []),
         ]
       : []),
   ];
@@ -3266,13 +3291,9 @@ function Attendance({ member, setPage, mode = 'check' }) {
       .catch((err) => setMessage(err.message));
   };
   const importBatchNamesFromText = (key, clipboardText) => {
-    const names = clipboardText
-      .split(/\r?\n/)
-      .filter((line) => line.length > 0)
-      .map((line) => line.split('\t')[1])
-      .filter((name) => name !== undefined && name !== '');
+    const names = rosterNamesFromText(clipboardText);
     if (!names.length) {
-      updateBatchRow(key, { message: '탭으로 구분된 두 번째 열에서 닉네임을 찾지 못했습니다.' });
+      updateBatchRow(key, { message: '명단에서 캐릭터명을 찾지 못했습니다. 분대 · 캐릭터명 · 위치 형식인지 확인해 주세요.' });
       return;
     }
     const importedNames = names.map((name, index) => {
@@ -3589,7 +3610,7 @@ function Attendance({ member, setPage, mode = 'check' }) {
         <p>{pageDescription}</p>
       </div>
 
-      {showCheck && member.role === 'ADMIN' && (
+      {showCheck && canManageAttendance(member) && (
         <section className="white-card boss-batch-card">
           <div className="section-heading">
             <div>
@@ -7724,7 +7745,7 @@ function MyPage({ member, setPage, favoritePages = [], onMemberUpdate }) {
           </div>
           <div>
             <small>권한</small>
-            <b>{member.role === 'ADMIN' ? '운영자' : '클랜원'}</b>
+            <b>{roleLabel(member.role)}</b>
           </div>
           <div>
             <small>회원 번호</small>
@@ -7985,7 +8006,7 @@ function Admin({ member, setPage, onMemberUpdate, memberOnly = false, favorites 
       members.filter((row) => {
         const keyword = normalize(memberFilters.keyword);
         const rowStatus = row.active ? row.status || '활성' : '비활성';
-        const matchesKeyword = !keyword || [row.characterName, row.guildName, row.characterClass, row.rank, row.status, row.role === 'ADMIN' ? '운영자' : '클랜원', row.active ? '활성' : '비활성', row.combatPower, row.level].some((value) => normalize(value).includes(keyword));
+        const matchesKeyword = !keyword || [row.characterName, row.guildName, row.characterClass, row.rank, row.status, roleLabel(row.role), row.active ? '활성' : '비활성', row.combatPower, row.level].some((value) => normalize(value).includes(keyword));
         const matchesClan = memberFilters.clan === 'all' || canonicalClanName(row.guildName) === memberFilters.clan;
         const matchesClass = memberFilters.characterClass === 'all' || (row.characterClass || '') === memberFilters.characterClass;
         const matchesStatus = memberFilters.status === 'all' || rowStatus === memberFilters.status;
@@ -8015,7 +8036,7 @@ function Admin({ member, setPage, onMemberUpdate, memberOnly = false, favorites 
       return /[",\n]/.test(safeText) ? `"${safeText.replace(/"/g, '""')}"` : safeText;
     };
     const headers = ['No.', '닉네임', '클랜', '클래스', '레벨', '전투력', '직급', '상태', '권한', '가입일'];
-    const rows = filteredMembers.map((row, index) => [index + 1, row.characterName, row.guildName || '', row.characterClass || '', row.level ?? '', row.combatPower ?? 0, row.rank || '', row.active ? row.status || '활성' : '비활성', row.role === 'ADMIN' ? '운영자' : '클랜원', row.createdAt ? new Date(row.createdAt).toLocaleDateString('ko-KR') : '']);
+    const rows = filteredMembers.map((row, index) => [index + 1, row.characterName, row.guildName || '', row.characterClass || '', row.level ?? '', row.combatPower ?? 0, row.rank || '', row.active ? row.status || '활성' : '비활성', roleLabel(row.role), row.createdAt ? new Date(row.createdAt).toLocaleDateString('ko-KR') : '']);
     const csv = `\uFEFF${[headers, ...rows].map((row) => row.map(escapeCsvCell).join(',')).join('\r\n')}`;
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -8089,7 +8110,7 @@ function Admin({ member, setPage, onMemberUpdate, memberOnly = false, favorites 
     try {
       await request(`/members/${targetMember.memberId}/role?role=${role}&adminMemberId=${member.memberId}`, { method: 'PATCH' });
       await load();
-      setMessage(`${targetMember.characterName}의 권한을 ${role === 'ADMIN' ? '운영자' : '클랜원'}로 변경했습니다.`);
+      setMessage(`${targetMember.characterName}의 권한을 ${roleLabel(role)}로 변경했습니다.`);
     } catch (err) {
       setMessage(err.message);
     } finally {
@@ -8595,7 +8616,7 @@ function Admin({ member, setPage, onMemberUpdate, memberOnly = false, favorites 
                         )}
                       </td>
                       <td>
-                        <span className={row.role === 'ADMIN' ? 'role-pill admin' : 'role-pill member'}>{row.role === 'ADMIN' ? '운영자' : '클랜원'}</span>
+                        <span className={`role-pill ${row.role === 'ADMIN' ? 'admin' : row.role === 'PHOTOGRAPHER' ? 'photographer' : 'member'}`}>{roleLabel(row.role)}</span>
                       </td>
                       <td>
                         {bulkEditing ? (
@@ -8612,15 +8633,16 @@ function Admin({ member, setPage, onMemberUpdate, memberOnly = false, favorites 
                         </button>
                       </td>
                       <td>
-                        {row.role === 'ADMIN' ? (
-                          <button className="role-button danger" disabled={bulkEditing || loadingId === row.memberId || row.memberId === member.memberId} onClick={() => changeRole(row, 'MEMBER')}>
-                            {row.memberId === member.memberId ? '본인 해제 불가' : '클랜원으로 변경'}
-                          </button>
-                        ) : (
-                          <button className="role-button" disabled={bulkEditing || loadingId === row.memberId} onClick={() => changeRole(row, 'ADMIN')}>
-                            운영자로 지정
-                          </button>
-                        )}
+                        <select
+                          value={row.role || 'MEMBER'}
+                          disabled={bulkEditing || loadingId === row.memberId || row.memberId === member.memberId}
+                          onChange={(event) => changeRole(row, event.target.value)}
+                          aria-label={`${row.characterName} 권한 변경`}
+                        >
+                          <option value="MEMBER">클랜원</option>
+                          <option value="PHOTOGRAPHER">사진사</option>
+                          <option value="ADMIN">운영자</option>
+                        </select>
                       </td>
                       <td>
                         <button className="role-button danger" disabled={bulkEditing || loadingId === row.memberId || row.memberId === member.memberId} onClick={() => deleteMember(row)}>
@@ -9320,7 +9342,7 @@ export default function App() {
   if (member.mustChangePassword) {
     return <ForcedPasswordChangeScreen member={member} onComplete={updateCurrentMember} onLogout={logout} />;
   }
-  if (member.role !== 'ADMIN' && adminOnlyPages.has(page))
+  if ((member.role !== 'ADMIN' && adminOnlyPages.has(page)) || (page === 'attendance' && !canManageAttendance(member)))
     return (
       <Shell member={member} page={page} setPage={setPage} onLogout={logout} favorites={favorites} toggleFavorite={toggleFavorite}>
         <AccessDenied />
