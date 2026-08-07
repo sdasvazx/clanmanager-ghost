@@ -222,6 +222,25 @@ function useRosterSettings() {
     window.addEventListener('clanmanager-roster-settings', refresh);
     return () => window.removeEventListener('clanmanager-roster-settings', refresh);
   }, []);
+  useEffect(() => {
+    request('/settings/clans')
+      .then((rows) => {
+        if (!Array.isArray(rows) || !rows.length) return;
+        setSettings((current) => {
+          const next = {
+            ...current,
+            clans: rows.map((row, index) => ({
+              id: `clan-${row.id ?? index}`,
+              name: String(row.name || '').trim(),
+              color: row.color || '#3b82f6',
+            })).filter((row) => row.name),
+          };
+          writeRosterSettings(next);
+          return next;
+        });
+      })
+      .catch(() => {});
+  }, []);
   return [settings, saveSettings];
 }
 
@@ -8955,7 +8974,7 @@ function LoadingCard() {
   return <section className="white-card loading-card">정보를 불러오는 중입니다...</section>;
 }
 
-function GeneralSettingsPage({ setPage }) {
+function GeneralSettingsPage({ member, setPage }) {
   const [settings, saveSettings] = useRosterSettings();
   const [draft, setDraft] = useState(settings);
   const [newItems, setNewItems] = useState({
@@ -8974,6 +8993,23 @@ function GeneralSettingsPage({ setPage }) {
     };
     setDraft(cleaned);
     saveSettings(cleaned);
+    request('/settings/clans', {
+      method: 'PUT',
+      body: JSON.stringify({
+        adminMemberId: member.memberId,
+        clans: cleaned.clans.map((item, index) => ({ name: item.name, color: item.color, displayOrder: index + 1 })),
+      }),
+    })
+      .then((rows) => {
+        const serverClans = normalizeSettingItems(
+          rows.map((row, index) => ({ id: `clan-${row.id ?? index}`, name: row.name, color: row.color })),
+          defaultRosterSettings.clans
+        );
+        const synced = { ...cleaned, clans: serverClans };
+        setDraft(synced);
+        saveSettings(synced);
+      })
+      .catch((error) => setMessage(error.message));
   };
   const addItem = (type) => {
     const name = newItems[type].name.trim();
@@ -8992,15 +9028,19 @@ function GeneralSettingsPage({ setPage }) {
     setNewItems((prev) => ({ ...prev, [type]: { ...prev[type], name: '' } }));
     setMessage('추가되었습니다.');
   };
-  const updateItem = (type, id, patch) => {
+  const updateItem = (type, id, patch, save = true) => {
     const nextItems = draft[type].map((item) => (item.id === id ? { ...item, ...patch } : item));
     if (Object.prototype.hasOwnProperty.call(patch, 'name') && !patch.name.trim()) {
       setDraft((prev) => ({ ...prev, [type]: nextItems }));
       setMessage('이름을 입력해 주세요.');
       return;
     }
-    persist({ ...draft, [type]: nextItems });
-    setMessage('저장되었습니다.');
+    if (save) {
+      persist({ ...draft, [type]: nextItems });
+      setMessage('저장되었습니다.');
+    } else {
+      setDraft((prev) => ({ ...prev, [type]: nextItems }));
+    }
   };
   const deleteItem = (type, id) => {
     if (draft[type].length <= 1) {
@@ -9047,7 +9087,12 @@ function GeneralSettingsPage({ setPage }) {
             <span className="setting-preview-pill" style={{ background: item.color }}>
               {item.name}
             </span>
-            <input className="setting-name-input" value={item.name} onChange={(event) => updateItem(type, item.id, { name: event.target.value })} />
+            <input
+              className="setting-name-input"
+              value={item.name}
+              onChange={(event) => updateItem(type, item.id, { name: event.target.value }, false)}
+              onBlur={() => persist(draft)}
+            />
             <input className="color-input" type="color" value={item.color} onChange={(event) => updateItem(type, item.id, { color: event.target.value })} />
             <button type="button" className="role-button danger" onClick={() => deleteItem(type, item.id)}>
               ×
@@ -9365,7 +9410,7 @@ export default function App() {
         <AccessDenied />
       </Shell>
     );
-  const view = page === 'lobby' ? <Lobby member={member} setPage={setPage} favoritePages={visibleFavoritePages} /> : page === 'my-info' ? <MyInfo member={member} setPage={setPage} /> : page === 'participation' ? <Participation member={member} setPage={setPage} /> : page === 'attendance' ? <Attendance member={member} setPage={setPage} mode="check" /> : page === 'boss-history' ? <Attendance member={member} setPage={setPage} mode="history" /> : page === 'payment' ? member.role === 'ADMIN' ? <DistributionAdminPage member={member} /> : <PaymentClaimPage member={member} /> : page === 'ledger' ? <ClanVaultPage member={member} /> : page === 'book' ? <ClanVaultPage member={member} readonly /> : page === 'inventory' ? <InventoryPage member={member} /> : page === 'all-items' ? <AllItemsPage member={member} setPage={setPage} /> : page === 'bidding' ? <BiddingPage member={member} /> : page === 'collection' ? <CollectionPage member={member} /> : page === 'item-request' ? <ItemRequestPage member={member} /> : page === 'spec-history' ? <SpecHistoryPage setPage={setPage} /> : page === 'activity-settings' ? <ActivitySettingsPage member={member} setPage={setPage} /> : page === 'general-settings' ? <GeneralSettingsPage setPage={setPage} /> : page === 'roster' ? <RosterScanAdmin setPage={setPage} /> : page === 'pinball' ? <PinballPage setPage={setPage} /> : page === 'mypage' ? <MyPage member={member} setPage={setPage} favoritePages={visibleFavoritePages} onMemberUpdate={updateCurrentMember} /> : page === 'admin' ? <Admin member={member} setPage={setPage} onMemberUpdate={updateCurrentMember} favorites={favorites} toggleFavorite={toggleFavorite} /> : page === 'member-admin' ? <MemberAdminPage member={member} setPage={setPage} onMemberUpdate={updateCurrentMember} /> : <Lobby member={member} setPage={setPage} favoritePages={visibleFavoritePages} />;
+  const view = page === 'lobby' ? <Lobby member={member} setPage={setPage} favoritePages={visibleFavoritePages} /> : page === 'my-info' ? <MyInfo member={member} setPage={setPage} /> : page === 'participation' ? <Participation member={member} setPage={setPage} /> : page === 'attendance' ? <Attendance member={member} setPage={setPage} mode="check" /> : page === 'boss-history' ? <Attendance member={member} setPage={setPage} mode="history" /> : page === 'payment' ? member.role === 'ADMIN' ? <DistributionAdminPage member={member} /> : <PaymentClaimPage member={member} /> : page === 'ledger' ? <ClanVaultPage member={member} /> : page === 'book' ? <ClanVaultPage member={member} readonly /> : page === 'inventory' ? <InventoryPage member={member} /> : page === 'all-items' ? <AllItemsPage member={member} setPage={setPage} /> : page === 'bidding' ? <BiddingPage member={member} /> : page === 'collection' ? <CollectionPage member={member} /> : page === 'item-request' ? <ItemRequestPage member={member} /> : page === 'spec-history' ? <SpecHistoryPage setPage={setPage} /> : page === 'activity-settings' ? <ActivitySettingsPage member={member} setPage={setPage} /> : page === 'general-settings' ? <GeneralSettingsPage member={member} setPage={setPage} /> : page === 'roster' ? <RosterScanAdmin setPage={setPage} /> : page === 'pinball' ? <PinballPage setPage={setPage} /> : page === 'mypage' ? <MyPage member={member} setPage={setPage} favoritePages={visibleFavoritePages} onMemberUpdate={updateCurrentMember} /> : page === 'admin' ? <Admin member={member} setPage={setPage} onMemberUpdate={updateCurrentMember} favorites={favorites} toggleFavorite={toggleFavorite} /> : page === 'member-admin' ? <MemberAdminPage member={member} setPage={setPage} onMemberUpdate={updateCurrentMember} /> : <Lobby member={member} setPage={setPage} favoritePages={visibleFavoritePages} />;
   return (
     <Shell member={member} page={page} setPage={setPage} onLogout={logout} favorites={favorites} toggleFavorite={toggleFavorite}>
       {view}
