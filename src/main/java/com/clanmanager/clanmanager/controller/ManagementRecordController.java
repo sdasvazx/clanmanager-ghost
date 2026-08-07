@@ -34,7 +34,7 @@ public class ManagementRecordController {
     private final ItemRequestRepository itemRequestRepository;
     private final MemberRepository memberRepository;
 
-    private static final List<String> ALL_ITEM_CLANS = List.of("귀신", "운좋은", "귀신Z", "로망");
+    private static final List<String> ALL_ITEM_CLANS = List.of("귀신", "귀신Z", "감각");
 
     private static final List<DefaultAllItem> DEFAULT_ALL_ITEMS = List.of(
             new DefaultAllItem("T2", "무기", "오브"),
@@ -110,10 +110,16 @@ public class ManagementRecordController {
     }
 
     @GetMapping("/all-items")
-    public List<AllItemStock> getAllItems(@RequestParam(required = false) String clanName) {
+    public List<AllItemStock> getAllItems(
+            @RequestParam(required = false) String clanName,
+            @RequestParam(required = false) List<String> clanNames
+    ) {
         if (clanName == null || clanName.isBlank() || "총합".equals(clanName)) {
-            ALL_ITEM_CLANS.forEach(this::seedDefaultAllItems);
-            return aggregateAllItemStocks();
+            List<String> targetClans = clanNames == null || clanNames.isEmpty()
+                    ? ALL_ITEM_CLANS
+                    : clanNames.stream().map(this::requireAllItemClanName).distinct().toList();
+            targetClans.forEach(this::seedDefaultAllItems);
+            return aggregateAllItemStocks(targetClans);
         }
         String targetClanName = requireAllItemClanName(clanName);
         seedDefaultAllItems(targetClanName);
@@ -505,9 +511,9 @@ public class ManagementRecordController {
         allItemStockRepository.saveAll(defaults);
     }
 
-    private List<AllItemStock> aggregateAllItemStocks() {
+    private List<AllItemStock> aggregateAllItemStocks(List<String> clanNames) {
         Map<String, AllItemStock> aggregateMap = new LinkedHashMap<>();
-        for (String clanName : ALL_ITEM_CLANS) {
+        for (String clanName : clanNames) {
             List<AllItemStock> rows = allItemStockRepository.findAllByClanNameOrderByDisplayOrderAscAllItemStockIdAsc(clanName);
             for (AllItemStock row : rows) {
                 String key = row.getTierName() + "\u0000" + row.getCategoryName() + "\u0000" + row.getItemName();
@@ -536,8 +542,8 @@ public class ManagementRecordController {
 
     private String requireAllItemClanName(String clanName) {
         String cleaned = cleanRequired(clanName, "클랜을 선택해 주세요.");
-        if (!ALL_ITEM_CLANS.contains(cleaned)) {
-            throw new IllegalArgumentException("전체아이템은 귀신/운좋은/귀신Z/로망 클랜별 탭에서만 저장할 수 있습니다.");
+        if ("총합".equals(cleaned)) {
+            throw new IllegalArgumentException("총합 탭에는 직접 저장할 수 없습니다.");
         }
         return cleaned;
     }

@@ -163,15 +163,15 @@ const NICKNAME_CHAR_PATTERN = /[^0-9A-Za-z\uAC00-\uD7A3]/g;
 const OCR_NOISE_WORDS = new Set(['lv', 'lvl', 'level', 'l', 'v', 'iv', 'il', 'i', '공격대', '파티', '자리', '빈칸', '추가']);
 const OCR_CORRECTION_STORAGE_KEY = 'clanmanagerOcrCorrections';
 const OCR_FILTER_STORAGE_KEY = 'clanmanagerOcrFilters';
-const clanOptions = ['귀신', '운좋은사람들', '귀신Z', '로망'];
+const defaultClanOptions = ['귀신', '귀신Z', '감각'];
 const classOptions = ['그림리퍼', '바이퍼', '블러드스테인', '아카샤', '카니지'];
 const rosterSettingStorageKey = 'clanmanager:roster-settings';
+const rosterSettingVersion = 2;
 const defaultRosterSettings = {
   clans: [
     { id: 'clan-ghost', name: '귀신', color: '#dc2626' },
     { id: 'clan-ghost-z', name: '귀신Z', color: '#10b981' },
-    { id: 'clan-romang', name: '로망', color: '#3b82f6' },
-    { id: 'clan-lucky', name: '운좋은', color: '#a855f7' },
+    { id: 'clan-sense', name: '감각', color: '#3b82f6' },
   ],
   classes: [
     { id: 'class-reaper', name: '그림리퍼', color: '#9ca3af' },
@@ -194,15 +194,22 @@ const normalizeSettingItems = (items, fallback) => {
 const readRosterSettings = () => {
   try {
     const parsed = JSON.parse(localStorage.getItem(rosterSettingStorageKey) || '{}');
+    const savedClans = normalizeSettingItems(parsed.clans, defaultRosterSettings.clans);
+    const migratedClans = Number(parsed.version || 0) < rosterSettingVersion
+      ? [
+          ...defaultRosterSettings.clans,
+          ...savedClans.filter((item) => !['귀신', '귀신Z', '운좋은', '운좋은사람들', '로망', '감각'].includes(item.name)),
+        ]
+      : savedClans;
     return {
-      clans: normalizeSettingItems(parsed.clans, defaultRosterSettings.clans),
+      clans: migratedClans,
       classes: normalizeSettingItems(parsed.classes, defaultRosterSettings.classes),
     };
   } catch {
     return defaultRosterSettings;
   }
 };
-const writeRosterSettings = (settings) => localStorage.setItem(rosterSettingStorageKey, JSON.stringify(settings));
+const writeRosterSettings = (settings) => localStorage.setItem(rosterSettingStorageKey, JSON.stringify({ ...settings, version: rosterSettingVersion }));
 function useRosterSettings() {
   const [settings, setSettings] = useState(readRosterSettings);
   const saveSettings = (nextSettings) => {
@@ -421,15 +428,14 @@ const preferFreshActivitySettings = (apiRows = []) => {
   const cachedRows = readCachedActivitySettings();
   return cachedRows.length > (Array.isArray(apiRows) ? apiRows.length : 0) ? cachedRows : apiRows;
 };
-const clanDisplayOrder = ['귀신', '운좋은사람들', '귀신Z', '로망'];
+const clanDisplayOrder = ['귀신', '귀신Z', '감각'];
 
 function canonicalClanName(value) {
   const name = String(value ?? '').trim();
   const key = normalize(name);
   if (!key) return '미분류';
   if (key.includes('귀신z') || key.includes('귀신제트')) return '귀신Z';
-  if (key.includes('운좋은')) return '운좋은사람들';
-  if (key.includes('로망')) return '로망';
+  if (key.includes('감각')) return '감각';
   if (key.includes('게헨나')) return '게헨나';
   if (key.includes('귀신')) return '귀신';
   return name;
@@ -543,7 +549,7 @@ function extractOcrNames(text, registeredMembers = []) {
   const zFixedText = normalizedText.replace(/2/g, 'z');
   const matched = registeredMembers.filter((m) => normalize(m.characterName).length > 1 && (normalizedText.includes(normalize(m.characterName)) || zFixedText.includes(ocrKey(m.characterName)))).map((m) => m.characterName);
   const matchedKeys = new Set(matched.map(normalize));
-  const blockedWords = new Set(['귀신', '귀신z', '로망', '운좋은', '운좋은사람들', '게헨나', '미분류', 'lv', 'level']);
+  const blockedWords = new Set(['귀신', '귀신z', '감각', '로망', '운좋은', '운좋은사람들', '게헨나', '미분류', 'lv', 'level']);
   const guessed = wholeText
     .split(/\r?\n/)
     .flatMap((line) =>
@@ -760,7 +766,7 @@ function extractSpecialDangNamesFromText(text, members, clanName = '') {
   return [...new Set(names)];
 }
 
-const OCR_MEMBER_PREFIXES = ['귀신', '귀신z', '로망', '운좋은', '운좋은사람들'];
+const OCR_MEMBER_PREFIXES = ['귀신', '귀신z', '감각', '로망', '운좋은', '운좋은사람들'];
 
 function isNoisyOcrCandidate(rawName) {
   const raw = String(rawName ?? '').trim();
@@ -769,7 +775,7 @@ function isNoisyOcrCandidate(rawName) {
   if (/^\d+$/.test(key)) return true;
   if (/^lv?\d*$/i.test(key)) return true;
   if (/[가-힣]\d{2,}$/.test(raw) || /\d{2,}[가-힣]/.test(raw)) return true;
-  if (/^귀신\d+$/i.test(raw) || /^로망\d+$/i.test(raw)) return true;
+  if (/^귀신\d+$/i.test(raw) || /^감각\d+$/i.test(raw) || /^로망\d+$/i.test(raw)) return true;
   if (key.length <= 2 && !/[a-z]/.test(key)) return true;
   return false;
 }
@@ -968,7 +974,7 @@ function buildOcrReview(text, members, clanName, options = {}) {
     });
   const exactKeys = new Set(exactNames.map(normalize));
   const rawCandidates = candidateNamesFromOcrTextSafe(text, precise);
-  const blockedWords = new Set(['귀신', '귀신z', '로망', '운좋은', '운좋은사람들', '게헨나', '미분류', 'lv', 'level']);
+  const blockedWords = new Set(['귀신', '귀신z', '감각', '로망', '운좋은', '운좋은사람들', '게헨나', '미분류', 'lv', 'level']);
   const canAutoConfirm = (raw, suggestion) => {
     const rawKey = normalizeForOcrMatch(raw);
     const nameKey = normalizeForOcrMatch(suggestion.member.characterName);
@@ -1660,6 +1666,7 @@ function VampirNoticePanel({ notices, newNoticeCount, connected, onClearNew }) {
 }
 
 function Lobby({ member, setPage, favoritePages = [] }) {
+  const [rosterSettings] = useRosterSettings();
   const [notices, setNotices] = useState([]);
   const [vampirNotices, setVampirNotices] = useState([]);
   const [newVampirNoticeCount, setNewVampirNoticeCount] = useState(0);
@@ -1756,13 +1763,13 @@ function Lobby({ member, setPage, favoritePages = [] }) {
           ))}
         </div>
       </section>
-      <ParticipationRanking rows={participationRows} totalCount={participationSummary?.totalMemberCount ?? members.length} periodLabel={defaultPeriodName(currentPeriod)} />
+      <ParticipationRanking rows={participationRows} totalCount={participationSummary?.totalMemberCount ?? members.length} periodLabel={defaultPeriodName(currentPeriod)} clans={rosterSettings.clans.map((item) => item.name)} />
     </>
   );
 }
 
-function ParticipationRanking({ rows, totalCount, periodLabel = '' }) {
-  const targetClans = clanDisplayOrder.slice(0, 4);
+function ParticipationRanking({ rows, totalCount, periodLabel = '', clans = defaultClanOptions }) {
+  const targetClans = clans.length ? clans : defaultClanOptions;
   const grouped = new Map(groupByClan(rows));
 
   return (
@@ -2699,6 +2706,9 @@ function Participation({ member, setPage }) {
 }
 
 function Attendance({ member, setPage, mode = 'check' }) {
+  const [rosterSettings] = useRosterSettings();
+  const clanOptions = rosterSettings.clans.map((item) => item.name).filter(Boolean);
+  if (!clanOptions.length) clanOptions.push(...defaultClanOptions);
   const [records, setRecords] = useState([]);
   const [recordPage, setRecordPage] = useState(1);
   const [recordPageInfo, setRecordPageInfo] = useState({
@@ -2728,7 +2738,7 @@ function Attendance({ member, setPage, mode = 'check' }) {
     cutTime: '21:00',
     bossName: '21시 보스',
     score: 1,
-    clanName: '로망',
+    clanName: clanOptions[0],
     memo: '',
   });
   const [draftByClan, setDraftByClan] = useState({});
@@ -3824,7 +3834,7 @@ function Attendance({ member, setPage, mode = 'check' }) {
                     <div className="batch-result">
                       <div className="batch-counts">
                         <span className="clan-badge total">전체 {row.names.length}명</span>
-                        {clanDisplayOrder.map((clan) =>
+                        {clanOptions.map((clan) =>
                           counts[clan] ? (
                             <span className={`clan-badge ${normalize(clan)}`} key={clan}>
                               {clan} {counts[clan]}명
@@ -5621,9 +5631,10 @@ function PaymentPage({ member }) {
   );
 }
 
-const DISTRIBUTION_CLANS = ['귀신', '운좋은', '귀신Z', '로망'];
-
 function DistributionAdminPage({ member }) {
+  const [rosterSettings] = useRosterSettings();
+  const distributionClans = rosterSettings.clans.map((item) => item.name).filter(Boolean);
+  if (!distributionClans.length) distributionClans.push(...defaultClanOptions);
   const initialSettings = {
     mode: 'CLAN',
     periodIds: [],
@@ -5632,9 +5643,9 @@ function DistributionAdminPage({ member }) {
     totalDiamonds: 0,
     totalParticipationDiamonds: 0,
     totalPowerDiamonds: 0,
-    clanDiamonds: { 귀신: 0, 운좋은: 0, 귀신Z: 0, 로망: 0 },
-    participationDiamonds: { 귀신: 0, 운좋은: 0, 귀신Z: 0, 로망: 0 },
-    powerDiamonds: { 귀신: 0, 운좋은: 0, 귀신Z: 0, 로망: 0 },
+    clanDiamonds: Object.fromEntries(distributionClans.map((clan) => [clan, 0])),
+    participationDiamonds: Object.fromEntries(distributionClans.map((clan) => [clan, 0])),
+    powerDiamonds: Object.fromEntries(distributionClans.map((clan) => [clan, 0])),
     memo: '',
   };
   const [settings, setSettings] = useState(initialSettings);
@@ -5657,9 +5668,9 @@ function DistributionAdminPage({ member }) {
     totalDiamonds: Number(source.totalDiamonds || 0),
     totalParticipationDiamonds: Number(source.totalParticipationDiamonds || 0),
     totalPowerDiamonds: Number(source.totalPowerDiamonds || 0),
-    clanDiamonds: Object.fromEntries(DISTRIBUTION_CLANS.map((clan) => [clan, Number(source.clanDiamonds?.[clan] || 0)])),
-    participationDiamonds: Object.fromEntries(DISTRIBUTION_CLANS.map((clan) => [clan, Number(source.participationDiamonds?.[clan] || 0)])),
-    powerDiamonds: Object.fromEntries(DISTRIBUTION_CLANS.map((clan) => [clan, Number(source.powerDiamonds?.[clan] || 0)])),
+    clanDiamonds: Object.fromEntries(distributionClans.map((clan) => [clan, Number(source.clanDiamonds?.[clan] || 0)])),
+    participationDiamonds: Object.fromEntries(distributionClans.map((clan) => [clan, Number(source.participationDiamonds?.[clan] || 0)])),
+    powerDiamonds: Object.fromEntries(distributionClans.map((clan) => [clan, Number(source.powerDiamonds?.[clan] || 0)])),
   });
 
   const loadHistory = async () => {
@@ -5732,7 +5743,7 @@ function DistributionAdminPage({ member }) {
     applySettings({
       ...settings,
       [key]: nextMap,
-      clanDiamonds: Object.fromEntries(DISTRIBUTION_CLANS.map((name) => [name, Number(nextParticipation?.[name] || 0) + Number(nextPower?.[name] || 0)])),
+      clanDiamonds: Object.fromEntries(distributionClans.map((name) => [name, Number(nextParticipation?.[name] || 0) + Number(nextPower?.[name] || 0)])),
     });
   };
 
@@ -5919,7 +5930,7 @@ function DistributionAdminPage({ member }) {
           클랜(소속) 필터
           <select value={clanFilter} onChange={(e) => setClanFilter(e.target.value)}>
             <option>전체보기</option>
-            {DISTRIBUTION_CLANS.map((clan) => (
+            {distributionClans.map((clan) => (
               <option key={clan}>{clan}</option>
             ))}
           </select>
@@ -6002,7 +6013,7 @@ function DistributionAdminPage({ member }) {
           </div>
         ) : (
           <div className="distribution-clan-cards">
-            {DISTRIBUTION_CLANS.map((clan) => (
+            {distributionClans.map((clan) => (
               <div className="distribution-clan-card" key={clan}>
                 <h3>{clan}</h3>
                 <label>
@@ -6627,14 +6638,18 @@ function InventoryPage({ member }) {
 }
 
 function AllItemsPage({ member, setPage }) {
+  const [rosterSettings] = useRosterSettings();
   const [rows, setRows] = useState([]);
   const [message, setMessage] = useState('');
   const [saving, setSaving] = useState(false);
-  const allItemTabs = ['귀신', '운좋은', '귀신Z', '로망', '총합'];
+  const configuredClans = rosterSettings.clans.map((item) => item.name).filter(Boolean);
+  if (!configuredClans.length) configuredClans.push(...defaultClanOptions);
+  const allItemTabs = [...configuredClans, '총합'];
   const [selectedClan, setSelectedClan] = useState('귀신');
   const readOnly = selectedClan === '총합';
+  const aggregateClanQuery = configuredClans.map((clan) => `clanNames=${encodeURIComponent(clan)}`).join('&');
   const load = () =>
-    request(`/management/all-items?clanName=${encodeURIComponent(readOnly ? '총합' : selectedClan)}`)
+    request(`/management/all-items?clanName=${encodeURIComponent(readOnly ? '총합' : selectedClan)}${readOnly && aggregateClanQuery ? `&${aggregateClanQuery}` : ''}`)
       .then((data) => setRows(Array.isArray(data) ? data : []))
       .catch((err) => setMessage(err.message));
   useEffect(() => {
@@ -6716,7 +6731,7 @@ function AllItemsPage({ member, setPage }) {
             </button>
           ))}
         </div>
-        <p className="muted-text">{readOnly ? '총합 탭은 귀신/운좋은/귀신Z/로망 재고와 지급 수량을 합산해서 보여주는 읽기 전용 화면입니다.' : `${selectedClan} 클랜의 재고와 지급 수량만 저장됩니다.`}</p>
+        <p className="muted-text">{readOnly ? '총합 탭은 귀신/귀신Z/감각 재고와 지급 수량을 합산해서 보여주는 읽기 전용 화면입니다.' : `${selectedClan} 클랜의 재고와 지급 수량만 저장됩니다.`}</p>
       </section>
       {message && <p className="vault-message">{message}</p>}
       <section className="white-card all-items-card">
@@ -8992,6 +9007,8 @@ function GeneralSettingsPage({ setPage }) {
       setMessage('목록은 최소 1개 이상 필요합니다.');
       return;
     }
+    const target = draft[type].find((item) => item.id === id);
+    if (!window.confirm(`${target?.name || '선택한 항목'}을 목록에서 삭제할까요? 기존 클랜원의 저장 데이터는 변경되지 않습니다.`)) return;
     persist({ ...draft, [type]: draft[type].filter((item) => item.id !== id) });
     setMessage('삭제되었습니다.');
   };
