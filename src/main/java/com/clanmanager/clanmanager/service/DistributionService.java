@@ -51,7 +51,7 @@ public class DistributionService {
 
     private static final Long VAULT_ID = 1L;
     private static final long ABSENCE_PENALTY_DIAMONDS = 1_000L;
-    private static final List<String> CLAN_ORDER = List.of("귀신", "운좋은", "귀신Z", "로망");
+    private static final List<String> CLAN_ORDER = List.of("귀신", "귀신Z", "감각");
 
     private final ParticipationService participationService;
     private final MemberRepository memberRepository;
@@ -75,10 +75,10 @@ public class DistributionService {
         List<DistributionResponseDto.ResultItemDto> baseResults = participation.getRows().stream()
                 .filter(row -> memberMap.containsKey(row.getMemberId()))
                 .map(row -> toBaseResult(row, memberMap.get(row.getMemberId()), settings))
-                .filter(row -> settings.mode().equals("TOTAL") || CLAN_ORDER.contains(row.getClanName()))
+                .filter(row -> settings.mode().equals("TOTAL") || settings.clanDiamonds().containsKey(row.getClanName()))
                 .toList();
 
-        Map<String, List<DistributionResponseDto.ResultItemDto>> groups = groupResults(baseResults, settings.mode());
+        Map<String, List<DistributionResponseDto.ResultItemDto>> groups = groupResults(baseResults, settings.mode(), settings.clanDiamonds().keySet());
         List<DistributionResponseDto.ClanSummaryDto> summaries = new ArrayList<>();
         List<DistributionResponseDto.ResultItemDto> finalResults = new ArrayList<>();
 
@@ -95,7 +95,7 @@ public class DistributionService {
         });
 
         finalResults.sort(Comparator
-                .comparing((DistributionResponseDto.ResultItemDto row) -> clanOrder(row.getClanName()))
+                .comparing((DistributionResponseDto.ResultItemDto row) -> clanOrder(row.getClanName(), settings.clanDiamonds()))
                 .thenComparing(DistributionResponseDto.ResultItemDto::getFinalAmount, Comparator.reverseOrder())
                 .thenComparing(DistributionResponseDto.ResultItemDto::getCharacterName));
 
@@ -507,15 +507,16 @@ public class DistributionService {
 
     private Map<String, List<DistributionResponseDto.ResultItemDto>> groupResults(
             List<DistributionResponseDto.ResultItemDto> results,
-            String mode
+            String mode,
+            Set<String> clanNames
     ) {
         if (mode.equals("TOTAL")) {
             return new LinkedHashMap<>(Map.of("전체", results));
         }
         Map<String, List<DistributionResponseDto.ResultItemDto>> groups = new LinkedHashMap<>();
-        CLAN_ORDER.forEach(clan -> groups.put(clan, new ArrayList<>()));
+        clanNames.forEach(clan -> groups.put(clan, new ArrayList<>()));
         results.stream()
-                .filter(row -> CLAN_ORDER.contains(row.getClanName()))
+                .filter(row -> groups.containsKey(row.getClanName()))
                 .forEach(row -> groups.get(row.getClanName()).add(row));
         return groups;
     }
@@ -614,11 +615,12 @@ public class DistributionService {
             mode = "CLAN";
         }
         List<Long> periodIds = normalizePeriodIds(request);
+        List<String> configuredClans = configuredClans(request);
         Map<String, Long> clanDiamonds = new LinkedHashMap<>();
-        CLAN_ORDER.forEach(clan -> clanDiamonds.put(clan, safeAmount(request.getClanDiamonds() == null ? null : request.getClanDiamonds().get(clan))));
+        configuredClans.forEach(clan -> clanDiamonds.put(clan, safeAmount(request.getClanDiamonds() == null ? null : request.getClanDiamonds().get(clan))));
         Map<String, Long> participationDiamonds = new LinkedHashMap<>();
         Map<String, Long> powerDiamonds = new LinkedHashMap<>();
-        CLAN_ORDER.forEach(clan -> {
+        configuredClans.forEach(clan -> {
             long legacyAmount = clanDiamonds.getOrDefault(clan, 0L);
             participationDiamonds.put(clan, safeAmount(request.getParticipationDiamonds() == null ? legacyAmount : request.getParticipationDiamonds().get(clan)));
             powerDiamonds.put(clan, safeAmount(request.getPowerDiamonds() == null ? 0L : request.getPowerDiamonds().get(clan)));
@@ -725,6 +727,20 @@ public class DistributionService {
         return round1(score);
     }
 
+    private List<String> configuredClans(DistributionRequestDto request) {
+        LinkedHashMap<String, Boolean> names = new LinkedHashMap<>();
+        List<Map<String, Long>> sources = List.of(
+                request.getClanDiamonds() == null ? Map.of() : request.getClanDiamonds(),
+                request.getParticipationDiamonds() == null ? Map.of() : request.getParticipationDiamonds(),
+                request.getPowerDiamonds() == null ? Map.of() : request.getPowerDiamonds()
+        );
+        sources.forEach(source -> source.keySet().stream()
+                .map(String::trim)
+                .filter(name -> !name.isBlank() && !"총합".equals(name))
+                .forEach(name -> names.putIfAbsent(name, true)));
+        return names.isEmpty() ? CLAN_ORDER : new ArrayList<>(names.keySet());
+    }
+
     private double growthScoreBetween(double fromPower, double toPower) {
         if (toPower <= fromPower) {
             return 0.0;
@@ -775,16 +791,15 @@ public class DistributionService {
             return "\uBBF8\uBD84\uB958";
         }
         String normalized = raw.trim().toLowerCase();
-        if (normalized.contains("운좋")) return "운좋은";
-        if (normalized.contains("로망")) return "로망";
+        if (normalized.contains("감각")) return "감각";
         if (normalized.contains("z") || normalized.contains("ｚ")) return "귀신Z";
         if (normalized.contains("귀신")) return "귀신";
-        return "\uBBF8\uBD84\uB958";
+        return raw.trim();
     }
 
-    private int clanOrder(String clanName) {
-        int index = CLAN_ORDER.indexOf(clanName);
-        return index < 0 ? CLAN_ORDER.size() : index;
+    private int clanOrder(String clanName, Map<String, Long> configuredClans) {
+        int index = new ArrayList<>(configuredClans.keySet()).indexOf(clanName);
+        return index < 0 ? configuredClans.size() : index;
     }
 
     private long safeAmount(Long value) {
