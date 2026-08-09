@@ -18,8 +18,18 @@ server:
 
 app:
   cors:
-    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,https://clanmanager-gray.vercel.app}
   vampir-notice:
     api-url: "${VAMPIR_NOTICE_API_URL:https://forum.netmarble.com/api/game/thered/official/forum/vampir/article/list?rows=20&start=0&viewType=pv&menuSeq=2&sort=NEW}"
     poll-interval-ms: ${VAMPIR_NOTICE_POLL_INTERVAL_MS:600000}
     initial-delay-ms: ${VAMPIR_NOTICE_INITIAL_DELAY_MS:15000}
+
+auth:
+  jwt:
+    secret: ${AUTH_JWT_SECRET}
+    access-lifetime: ${AUTH_ACCESS_LIFETIME:PT30M}
+    refresh-lifetime: ${AUTH_REFRESH_LIFETIME:P30D}
+  cookie:
+    secure: ${AUTH_COOKIE_SECURE:true}
+    same-site: ${AUTH_COOKIE_SAME_SITE:None}
+    max-age: ${AUTH_COOKIE_MAX_AGE:P30D}

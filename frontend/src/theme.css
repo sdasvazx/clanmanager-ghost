@@ -1,6 +1,6 @@
 [data-theme="dark"] {
-  color: #e5edf7;
-  background: #101722;
+  color: #e7e7e5;
+  background: #1c1c1e;
   color-scheme: dark;
 }
 
@@ -508,17 +508,17 @@
 }
 
 [data-theme="dark"] {
-  --theme-bg: #101722;
-  --theme-card: #172131;
-  --theme-card-soft: #111b2a;
-  --theme-border: #2b3b52;
-  --theme-text: #e5edf7;
-  --theme-muted: #9fb0c6;
-  --theme-primary: #60a5fa;
-  --theme-primary-dark: #3b82f6;
-  --theme-primary-soft: #20385b;
-  --theme-primary-border: #31527f;
-  --theme-primary-text: #bcd7ff;
+  --theme-bg: #1c1c1e;
+  --theme-card: #26262a;
+  --theme-card-soft: #26262a;
+  --theme-border: #38383c;
+  --theme-text: #e7e7e5;
+  --theme-muted: #a0a0a0;
+  --theme-primary: #8b7fd9;
+  --theme-primary-dark: #766bc7;
+  --theme-primary-soft: #302d42;
+  --theme-primary-border: #514a78;
+  --theme-primary-text: #c8c1ea;
   --theme-shadow: none;
 }
 
@@ -673,6 +673,368 @@
   color: #fef3c7;
 }
 
+/* Eye-comfort dark palette: neutral surfaces, softened contrast and one
+   consistent card luminance across the dashboard. */
+[data-theme="dark"] body,
+[data-theme="dark"] .shell,
+[data-theme="dark"] .content {
+  background: #1c1c1e;
+  color: #e7e7e5;
+}
+
+[data-theme="dark"] .topbar,
+[data-theme="dark"] .sidebar,
+[data-theme="dark"] .white-card,
+[data-theme="dark"] .auth-card,
+[data-theme="dark"] .admin-card,
+[data-theme="dark"] .notice-row,
+[data-theme="dark"] .clan-ranking-block,
+[data-theme="dark"] .boss-roster-group,
+[data-theme="dark"] .boss-roster-editor,
+[data-theme="dark"] .pinball-draft,
+[data-theme="dark"] .inline-pinball,
+[data-theme="dark"] .participation-search-result,
+[data-theme="dark"] .participation-search-result > div,
+[data-theme="dark"] .metric,
+[data-theme="dark"] .formula-row div,
+[data-theme="dark"] .admin-edit-form,
+[data-theme="dark"] .admin-create-form,
+[data-theme="dark"] .admin-reset-form,
+[data-theme="dark"] .password-form,
+[data-theme="dark"] .vault-form-card,
+[data-theme="dark"] .vault-balance,
+[data-theme="dark"] .batch-manual-add,
+[data-theme="dark"] .forum-news-card,
+[data-theme="dark"] .lobby-participation-card,
+[data-theme="dark"] .vault-distribution-card,
+[data-theme="dark"] .vault-distribution-stats article,
+[data-theme="dark"] .vault-period-summary > article,
+[data-theme="dark"] .collection-toolbar,
+[data-theme="dark"] .collection-main-card,
+[data-theme="dark"] .collection-cut-panel,
+[data-theme="dark"] .collection-log-card,
+[data-theme="dark"] .collection-log-panel,
+[data-theme="dark"] .collection-wide-wrap,
+[data-theme="dark"] .collection-summary-grid div,
+[data-theme="dark"] .collection-item-card,
+[data-theme="dark"] .collection-member-card,
+[data-theme="dark"] .table-filter-panel,
+[data-theme="dark"] .participation-detail-modal,
+[data-theme="dark"] .participation-score-card,
+[data-theme="dark"] .participation-detail-panel,
+[data-theme="dark"] .period-history-card,
+[data-theme="dark"] .boss-stat-list > div,
+[data-theme="dark"] .detail-history-list > div,
+[data-theme="dark"] .favorite-link-grid button,
+[data-theme="dark"] .favorite-empty,
+[data-theme="dark"] .favorite-menu-empty,
+[data-theme="dark"] .menu-view-toggle,
+[data-theme="dark"] .distribution-clan-card,
+[data-theme="dark"] .confirm-modal {
+  background: #26262a;
+  border-color: #38383c;
+  color: #e7e7e5;
+  box-shadow: none;
+}
+
+[data-theme="dark"] .menu-item,
+[data-theme="dark"] .menu-row,
+[data-theme="dark"] .vault-target-picker,
+[data-theme="dark"] .vault-target-list,
+[data-theme="dark"] .vault-target-list label,
+[data-theme="dark"] .collection-wide-table th,
+[data-theme="dark"] .collection-wide-table th.collection-member-head,
+[data-theme="dark"] .collection-wide-table .collection-member-name,
+[data-theme="dark"] .activity-setting-head {
+  background: #26262a;
+  border-color: #38383c;
+  color: #e7e7e5;
+}
+
+[data-theme="dark"] .menu-item:hover,
+[data-theme="dark"] .menu-item.active,
+[data-theme="dark"] .menu-row:hover,
+[data-theme="dark"] .menu-row.active,
+[data-theme="dark"] .data-table tbody tr:hover,
+[data-theme="dark"] .ranking tbody tr:nth-child(even),
+[data-theme="dark"] .lobby-ranking-table tr:hover {
+  background: #302d42;
+  color: #e7e7e5;
+}
+
+[data-theme="dark"] input,
+[data-theme="dark"] select,
+[data-theme="dark"] textarea,
+[data-theme="dark"] .auth-card input,
+[data-theme="dark"] .filters input,
+[data-theme="dark"] .filters select,
+[data-theme="dark"] .batch-manual-controls input,
+[data-theme="dark"] .table-filter-panel input,
+[data-theme="dark"] .table-filter-panel select,
+[data-theme="dark"] .collection-log-tools input,
+[data-theme="dark"] .distribution-clan-card input {
+  background: #202023;
+  border-color: #38383c;
+  color: #e7e7e5;
+}
+
+[data-theme="dark"] .page-title p,
+[data-theme="dark"] .subtle,
+[data-theme="dark"] .notice-row p,
+[data-theme="dark"] .notice-row small,
+[data-theme="dark"] .empty-state,
+[data-theme="dark"] .side-note small,
+[data-theme="dark"] .metric small,
+[data-theme="dark"] .participation-search-result span,
+[data-theme="dark"] .participation-search-result small,
+[data-theme="dark"] .table-filter-panel label,
+[data-theme="dark"] .collection-log-tools label,
+[data-theme="dark"] .collection-log-page-info,
+[data-theme="dark"] .period-history-card span,
+[data-theme="dark"] .period-history-card small {
+  color: #a0a0a0;
+}
+
+[data-theme="dark"] .brand-mark,
+[data-theme="dark"] .primary-button,
+[data-theme="dark"] .period-save-button,
+[data-theme="dark"] .member-add-button,
+[data-theme="dark"] .vault-submit,
+[data-theme="dark"] .login-button,
+[data-theme="dark"] .quick-actions button,
+[data-theme="dark"] .dark-button {
+  background: #8b7fd9;
+  border-color: #8b7fd9;
+  color: #f1f0ed;
+}
+
+[data-theme="dark"] .circle-button,
+[data-theme="dark"] .profile-menu,
+[data-theme="dark"] .outline-button,
+[data-theme="dark"] .hamburger,
+[data-theme="dark"] .admin-back-button,
+[data-theme="dark"] .mini-button,
+[data-theme="dark"] .result-count,
+[data-theme="dark"] .favorite-link-grid span,
+[data-theme="dark"] .collection-item-header button,
+[data-theme="dark"] .collection-log-toggle b,
+[data-theme="dark"] .menu-icon {
+  background: #302d42;
+  border-color: #514a78;
+  color: #c8c1ea;
+}
+
+[data-theme="dark"] .ranking th,
+[data-theme="dark"] .ranking td,
+[data-theme="dark"] .lobby-ranking-table th,
+[data-theme="dark"] .lobby-ranking-table td,
+[data-theme="dark"] .data-table th,
+[data-theme="dark"] .data-table td,
+[data-theme="dark"] .collection-wide-table th,
+[data-theme="dark"] .collection-wide-table td {
+  border-color: #38383c;
+}
+
+[data-theme="dark"] .ranking th,
+[data-theme="dark"] .lobby-ranking-table th,
+[data-theme="dark"] .data-table th {
+  color: #a0a0a0;
+}
+
+[data-theme="dark"] .sortable-th.active,
+[data-theme="dark"] .period-history-card.active {
+  background: #302d42;
+  border-color: #8b7fd9;
+  color: #c8c1ea;
+  box-shadow: 0 0 0 2px rgba(139, 127, 217, .18);
+}
+
+/* Collection matrix needs explicit row and frozen-column colors because the
+   base table uses light zebra rows with more specific selectors. */
+[data-theme="dark"] .collection-wide-table tbody tr:nth-child(odd) td,
+[data-theme="dark"] .collection-wide-table tbody tr:nth-child(odd) .collection-member-name {
+  background: #26262a;
+  color: #e7e7e5;
+}
+
+[data-theme="dark"] .collection-wide-table tbody tr:nth-child(even) td,
+[data-theme="dark"] .collection-wide-table tbody tr:nth-child(even) .collection-member-name {
+  background: #2d2d30;
+  color: #e7e7e5;
+}
+
+[data-theme="dark"] .collection-member-name b {
+  color: #e7e7e5;
+}
+
+[data-theme="dark"] .collection-member-name small {
+  color: #a0a0a0;
+}
+
+[data-theme="dark"] .collection-admin-power {
+  color: #c8c1ea;
+}
+
+[data-theme="dark"] input::placeholder,
+[data-theme="dark"] textarea::placeholder {
+  color: #858585;
+  opacity: 1;
+}
+
+[data-theme="gold"] .collection-wide-table tbody tr:nth-child(odd) td,
+[data-theme="gold"] .collection-wide-table tbody tr:nth-child(odd) .collection-member-name {
+  background: #1d1b16;
+  color: #fef3c7;
+}
+
+[data-theme="gold"] .collection-wide-table tbody tr:nth-child(even) td,
+[data-theme="gold"] .collection-wide-table tbody tr:nth-child(even) .collection-member-name {
+  background: #252115;
+  color: #fef3c7;
+}
+
+[data-theme="gold"] .collection-wide-table th,
+[data-theme="gold"] .collection-wide-table th.collection-member-head {
+  background: #252115;
+  border-color: #4a3b19;
+  color: #fef3c7;
+}
+
+[data-theme="gold"] .collection-wide-table td,
+[data-theme="gold"] .collection-wide-table th {
+  border-color: #4a3b19;
+}
+
+[data-theme="gold"] .collection-member-name b {
+  color: #fef3c7;
+}
+
+[data-theme="gold"] .collection-member-name small,
+[data-theme="gold"] .table-filter-panel label {
+  color: #c7b680;
+}
+
+[data-theme="gold"] .collection-admin-power {
+  color: #fbbf24;
+}
+
+[data-theme="gold"] input::placeholder,
+[data-theme="gold"] textarea::placeholder {
+  color: #9f936d;
+  opacity: 1;
+}
+
+/* Apply the selected dark palette to every table, including legacy tables
+   whose row backgrounds were hard-coded to white in feature stylesheets. */
+[data-theme="dark"] table {
+  background: #26262a;
+  color: #e7e7e5;
+}
+
+[data-theme="dark"] table thead th,
+[data-theme="dark"] table th,
+[data-theme="dark"] table th.sticky-col {
+  background: #26262a !important;
+  border-color: #38383c !important;
+  color: #c5c5c3 !important;
+}
+
+[data-theme="dark"] table tbody tr:nth-child(odd) td,
+[data-theme="dark"] table tbody tr:nth-child(odd) th,
+[data-theme="dark"] table tbody tr:nth-child(odd) .sticky-col {
+  background: #26262a !important;
+  border-color: #38383c !important;
+  color: #e7e7e5;
+}
+
+[data-theme="dark"] table tbody tr:nth-child(even) td,
+[data-theme="dark"] table tbody tr:nth-child(even) th,
+[data-theme="dark"] table tbody tr:nth-child(even) .sticky-col {
+  background: #2d2d30 !important;
+  border-color: #38383c !important;
+  color: #e7e7e5;
+}
+
+[data-theme="dark"] table tbody tr:hover td,
+[data-theme="dark"] table tbody tr:hover .sticky-col {
+  background: #302d42 !important;
+}
+
+[data-theme="dark"] table td small {
+  color: #a0a0a0;
+}
+
+[data-theme="gold"] table {
+  background: #1d1b16;
+  color: #fef3c7;
+}
+
+[data-theme="gold"] table thead th,
+[data-theme="gold"] table th,
+[data-theme="gold"] table th.sticky-col {
+  background: #252115 !important;
+  border-color: #4a3b19 !important;
+  color: #f5e7b5 !important;
+}
+
+[data-theme="gold"] table tbody tr:nth-child(odd) td,
+[data-theme="gold"] table tbody tr:nth-child(odd) th,
+[data-theme="gold"] table tbody tr:nth-child(odd) .sticky-col {
+  background: #1d1b16 !important;
+  border-color: #4a3b19 !important;
+  color: #fef3c7;
+}
+
+[data-theme="gold"] table tbody tr:nth-child(even) td,
+[data-theme="gold"] table tbody tr:nth-child(even) th,
+[data-theme="gold"] table tbody tr:nth-child(even) .sticky-col {
+  background: #252115 !important;
+  border-color: #4a3b19 !important;
+  color: #fef3c7;
+}
+
+[data-theme="gold"] table tbody tr:hover td,
+[data-theme="gold"] table tbody tr:hover .sticky-col {
+  background: #3f2f12 !important;
+}
+
+[data-theme="gold"] table td small {
+  color: #c7b680;
+}
+
+[data-theme="dark"] .menu-item.active,
+[data-theme="dark"] .menu-item:hover {
+  background: #302d42;
+  color: #e7e7e5 !important;
+}
+
+[data-theme="dark"] .menu-item.active .menu-icon {
+  background: #8b7fd9;
+  color: #f1f0ed;
+}
+
+[data-theme="gold"] .menu-item,
+[data-theme="gold"] .menu-item.active,
+[data-theme="gold"] .menu-item:hover {
+  border-color: #4a3b19;
+  color: #fef3c7 !important;
+}
+
+[data-theme="gold"] .menu-item.active,
+[data-theme="gold"] .menu-item:hover {
+  background: #3f2f12;
+}
+
+[data-theme="gold"] .menu-item.active .menu-icon {
+  background: #f59e0b;
+  color: #1d1b16;
+}
+
+[data-theme="dark"] .menu-item > span:last-child,
+[data-theme="gold"] .menu-item > span:last-child {
+  color: inherit !important;
+}
+
 @media (max-width: 760px) {
   .theme-picker {
     max-width: 44px;
@@ -686,3 +1048,43 @@
     pointer-events: auto;
   }
 }
+
+/* Login persistence choice */
+.auth-card .remember-login-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 11px 12px;
+  border: 1px solid #dbe5f1;
+  border-radius: 10px;
+  background: #f8fbff;
+  cursor: pointer;
+}
+
+.auth-card .remember-login-option input {
+  width: 17px;
+  height: 17px;
+  margin: 2px 0 0;
+  accent-color: #2978ed;
+  box-shadow: none;
+}
+
+.remember-login-option span { display: grid; gap: 3px; }
+.remember-login-option b { color: #263a56; font-size: .9rem; }
+.remember-login-option small { color: #73829a; font-size: .78rem; font-weight: 500; line-height: 1.4; }
+
+[data-theme="dark"] .auth-card .remember-login-option {
+  background: #26262a;
+  border-color: #38383c;
+}
+
+[data-theme="dark"] .remember-login-option b { color: #e7e7e5; }
+[data-theme="dark"] .remember-login-option small { color: #a0a0a0; }
+
+[data-theme="gold"] .auth-card .remember-login-option {
+  background: #252115;
+  border-color: #4a3b19;
+}
+
+[data-theme="gold"] .remember-login-option b { color: #fef3c7; }
+[data-theme="gold"] .remember-login-option small { color: #c7b680; }

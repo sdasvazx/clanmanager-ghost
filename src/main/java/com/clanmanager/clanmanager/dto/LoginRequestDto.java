@@ -16,4 +16,6 @@ public class LoginRequestDto {
     @NotBlank(message = "비밀번호를 입력해 주세요.")
     @Size(max = 100, message = "비밀번호는 100자 이하로 입력해 주세요.")
     private String password;
+
+    private Boolean rememberMe;
 }
