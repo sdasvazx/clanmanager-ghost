@@ -12,3 +12,9 @@ spring:
 app:
   vampir-notice:
     initial-delay-ms: 3600000
+
+auth:
+  jwt:
+    secret: test-jwt-secret-that-is-definitely-longer-than-32-characters
+  cookie:
+    secure: false
