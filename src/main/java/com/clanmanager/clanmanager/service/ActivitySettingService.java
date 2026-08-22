@@ -16,6 +16,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.time.LocalTime;
 
 @Service
 @RequiredArgsConstructor
@@ -25,16 +26,16 @@ public class ActivitySettingService {
     private final MemberRepository memberRepository;
 
     public static final List<DefaultActivity> DEFAULT_ACTIVITIES = List.of(
-            new DefaultActivity("소수쟁", 1, false, 0),
-            new DefaultActivity("13시 (2성)", 1, true, 2),
-            new DefaultActivity("17시 (1성)", 1, false, 0),
-            new DefaultActivity("21시 (2성)", 2, true, 3),
-            new DefaultActivity("결승전", 0, true, 10),
-            new DefaultActivity("마슈미드", 1, true, 10),
-            new DefaultActivity("에노크", 1, true, 10),
-            new DefaultActivity("전초전", 0, true, 10),
-            new DefaultActivity("클랜임무", 0, true, 10),
-            new DefaultActivity("클랜수호", 0, true, 10)
+            new DefaultActivity("소수쟁", 1, false, 0, LocalTime.of(22, 0)),
+            new DefaultActivity("13시 (2성)", 1, true, 2, LocalTime.of(13, 0)),
+            new DefaultActivity("17시 (1성)", 1, false, 0, LocalTime.of(17, 0)),
+            new DefaultActivity("21시 (2성)", 2, true, 3, LocalTime.of(21, 0)),
+            new DefaultActivity("결승전", 0, true, 10, LocalTime.of(21, 30)),
+            new DefaultActivity("마슈미드", 1, true, 10, LocalTime.of(22, 0)),
+            new DefaultActivity("에노크", 1, true, 10, LocalTime.of(22, 0)),
+            new DefaultActivity("전초전", 0, true, 10, LocalTime.of(21, 30)),
+            new DefaultActivity("클랜임무", 0, true, 10, LocalTime.of(20, 10)),
+            new DefaultActivity("클랜수호", 0, true, 10, LocalTime.of(20, 10))
     );
 
     @Transactional
@@ -50,6 +51,9 @@ public class ActivitySettingService {
             activityType.setAbsencePenaltyScore(defaultActivity.absencePenaltyScore());
             activityType.setDisplayOrder(order++);
             activityType.setActive(true);
+            if (activityType.getCutTime() == null) {
+                activityType.setCutTime(defaultActivity.cutTime());
+            }
         }
 
         activityTypeRepository.findAll().forEach(activityType -> {
@@ -64,6 +68,9 @@ public class ActivitySettingService {
             }
             if (activityType.getAbsencePenaltyScore() == null) {
                 activityType.setAbsencePenaltyScore(0);
+            }
+            if (activityType.getCutTime() == null) {
+                activityType.setCutTime(defaultCutTime(activityType.getTypeName()));
             }
         });
     }
@@ -104,6 +111,7 @@ public class ActivitySettingService {
             activityType.setPenaltyEnabled(Boolean.TRUE.equals(row.getPenaltyEnabled()));
             activityType.setAbsencePenaltyScore(absencePenaltyScore);
             activityType.setDisplayOrder(row.getDisplayOrder() == null ? order : row.getDisplayOrder());
+            activityType.setCutTime(row.getCutTime() == null ? defaultCutTime(activityName) : row.getCutTime());
             activityType.setActive(true);
             savedIds.add(activityTypeRepository.save(activityType).getActivityTypeId());
             order++;
@@ -129,6 +137,7 @@ public class ActivitySettingService {
                         .penaltyEnabled(true)
                         .absencePenaltyScore(0)
                         .displayOrder(999)
+                        .cutTime(defaultCutTime(name))
                         .active(true)
                         .build()));
     }
@@ -180,6 +189,16 @@ public class ActivitySettingService {
         return ActivityCategory.BOSS;
     }
 
+    private LocalTime defaultCutTime(String name) {
+        String compact = clean(name).replaceAll("\\s+", "");
+        if (compact.contains("클랜점령전")) return LocalTime.of(20, 30);
+        if (compact.contains("클랜수호") || compact.contains("클랜임무") || compact.equals("수호")) return LocalTime.of(20, 10);
+        if (compact.contains("전초전") || compact.contains("결승전")) return LocalTime.of(21, 30);
+        java.util.regex.Matcher matcher = java.util.regex.Pattern.compile("(\\d{1,2})시").matcher(compact);
+        if (matcher.find()) return LocalTime.of(Math.min(23, Integer.parseInt(matcher.group(1))), 0);
+        return LocalTime.of(22, 0);
+    }
+
     private String clean(String value) {
         return value == null ? "" : value.trim();
     }
@@ -188,6 +207,6 @@ public class ActivitySettingService {
         return value == null ? defaultValue : value;
     }
 
-    public record DefaultActivity(String name, int participationScore, boolean penaltyEnabled, int absencePenaltyScore) {
+    public record DefaultActivity(String name, int participationScore, boolean penaltyEnabled, int absencePenaltyScore, LocalTime cutTime) {
     }
 }

@@ -10,6 +10,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
 
 public class ActivitySettingDto {
@@ -41,6 +42,8 @@ public class ActivitySettingDto {
         @Min(value = 1, message = "표시 순서는 1 이상으로 입력해 주세요.")
         private Integer displayOrder;
 
+        private LocalTime cutTime;
+
         private Boolean active;
     }
 
@@ -53,6 +56,7 @@ public class ActivitySettingDto {
         private Boolean penaltyEnabled;
         private Integer absencePenaltyScore;
         private Integer displayOrder;
+        private LocalTime cutTime;
         private Boolean active;
         private LocalDateTime createdAt;
         private LocalDateTime updatedAt;
@@ -68,6 +72,7 @@ public class ActivitySettingDto {
                     .penaltyEnabled(Boolean.TRUE.equals(activityType.getPenaltyEnabled()))
                     .absencePenaltyScore(activityType.getAbsencePenaltyScore() == null ? 0 : activityType.getAbsencePenaltyScore())
                     .displayOrder(activityType.getDisplayOrder() == null ? 999 : activityType.getDisplayOrder())
+                    .cutTime(activityType.getCutTime())
                     .active(Boolean.TRUE.equals(activityType.getActive()))
                     .createdAt(activityType.getCreatedAt())
                     .updatedAt(activityType.getUpdatedAt())

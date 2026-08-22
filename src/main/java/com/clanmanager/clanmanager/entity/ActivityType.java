@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 
 @Entity
 @Table(name = "activity_types")
@@ -39,6 +40,9 @@ public class ActivityType {
 
     @Column
     private Integer displayOrder;
+
+    @Column
+    private LocalTime cutTime;
 
     @Column(nullable = false)
     private Boolean active;

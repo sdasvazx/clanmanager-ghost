@@ -403,7 +403,7 @@ const bossCheckSlots = [
   {
     key: 'final',
     title: '결승전',
-    cutTime: '22:00',
+    cutTime: '21:30',
     bossName: '결승전',
     score: 1,
   },
@@ -423,6 +423,10 @@ const bossCheckSlots = [
   },
 ];
 const inferActivityCutTime = (activityName) => {
+  const compact = String(activityName || '').replace(/\s+/g, '');
+  if (compact.includes('클랜점령전')) return '20:30';
+  if (compact.includes('클랜수호') || compact.includes('클랜임무') || compact === '수호') return '20:10';
+  if (compact.includes('전초전') || compact.includes('결승전')) return '21:30';
   const match = String(activityName || '').match(/(\d{1,2})\s*시/);
   if (!match) return '22:00';
   return `${String(Math.min(23, Math.max(0, Number(match[1])))).padStart(2, '0')}:00`;
@@ -433,7 +437,7 @@ const activitySettingToBossSlot = (activity, index) => {
     key: `activity-${activity.activityTypeId ?? (normalize(activityName) || index)}`,
     activityTypeId: activity.activityTypeId ?? null,
     title: activityName,
-    cutTime: inferActivityCutTime(activityName),
+    cutTime: String(activity.cutTime || inferActivityCutTime(activityName)).slice(0, 5),
     bossName: activityName,
     score: activity.participationScore ?? activity.score ?? 1,
     penaltyEnabled: activity.penaltyEnabled,
@@ -9189,6 +9193,7 @@ function ActivitySettingsPage({ member, setPage }) {
     participationScore: 1,
     penaltyEnabled: true,
     absencePenaltyScore: 0,
+    cutTime: '22:00',
     displayOrder: 1,
     active: true,
   });
@@ -9200,6 +9205,7 @@ function ActivitySettingsPage({ member, setPage }) {
         participationScore: Number(row.participationScore ?? row.score ?? 0),
         penaltyEnabled: !!row.penaltyEnabled,
         absencePenaltyScore: Number(row.absencePenaltyScore ?? 0),
+        cutTime: String(row.cutTime || inferActivityCutTime(row.activityName || row.typeName)).slice(0, 5),
         displayOrder: Number(row.displayOrder ?? index + 1),
         active: row.active !== false,
       }))
@@ -9279,6 +9285,7 @@ function ActivitySettingsPage({ member, setPage }) {
               activityName: row.activityName.trim(),
               participationScore: Number(row.participationScore || 0),
               absencePenaltyScore: Number(row.absencePenaltyScore || 0),
+              cutTime: row.cutTime || inferActivityCutTime(row.activityName),
               active: true,
             })),
         }),
@@ -9312,13 +9319,14 @@ function ActivitySettingsPage({ member, setPage }) {
         .filter(Boolean);
       const parsed = lines
         .map((line, index) => {
-          const [activityName, participationScore = '1', penaltyEnabled = 'false', absencePenaltyScore = '0'] = line.split(',').map((part) => part.trim());
+          const [activityName, participationScore = '1', penaltyEnabled = 'false', absencePenaltyScore = '0', cutTime = ''] = line.split(',').map((part) => part.trim());
           return {
             ...emptyRow(),
             activityName,
             participationScore: Number(participationScore || 0),
             penaltyEnabled: ['true', '1', 'y', 'yes', 'on', '적용'].includes((penaltyEnabled || '').toLowerCase()),
             absencePenaltyScore: Number(absencePenaltyScore || 0),
+            cutTime: cutTime || inferActivityCutTime(activityName),
             displayOrder: index + 1,
             active: true,
           };
@@ -9354,13 +9362,14 @@ function ActivitySettingsPage({ member, setPage }) {
 
         <section className="white-card activity-settings-card">
           <div className="info-banner">
-            <b>참여점수/미참여 페널티를 일정별로 설정합니다.</b>
-            <span>페널티 토글을 켜면 해당 활동 미참여 시 입력한 점수만큼 참여점수에서 차감됩니다.</span>
+            <b>출석 시간과 참여점수/미참여 페널티를 일정별로 설정합니다.</b>
+            <span>저장한 출석 시간은 출석체크 화면에 바로 반영됩니다. 페널티 토글을 켜면 미참여 점수도 차감됩니다.</span>
           </div>
           <div className="activity-setting-table">
             <div className="activity-setting-head">
               <span>순서</span>
               <span>보스/콘텐츠명</span>
+              <span>출석 시간</span>
               <span>참여점수</span>
               <span>페널티 적용 여부</span>
               <span>미참여 페널티 점수</span>
@@ -9378,6 +9387,7 @@ function ActivitySettingsPage({ member, setPage }) {
                   </button>
                 </div>
                 <input value={row.activityName} onChange={(e) => updateRow(index, { activityName: e.target.value })} placeholder="보스/콘텐츠명" disabled={!row.active} />
+                <input type="time" value={row.cutTime} onChange={(e) => updateRow(index, { cutTime: e.target.value })} disabled={!row.active} />
                 <input type="number" min="0" value={row.participationScore} onChange={(e) => updateRow(index, { participationScore: e.target.value })} disabled={!row.active} />
                 <label className="switch-label">
                   <input type="checkbox" checked={!!row.penaltyEnabled} onChange={(e) => updateRow(index, { penaltyEnabled: e.target.checked })} disabled={!row.active} />

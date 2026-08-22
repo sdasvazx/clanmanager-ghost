@@ -405,10 +405,10 @@
 .activity-setting-head,
 .activity-setting-row {
   display: grid;
-  grid-template-columns: 130px minmax(220px, 1fr) 140px 170px 170px 80px;
+  grid-template-columns: 130px minmax(220px, 1fr) 130px 140px 170px 170px 80px;
   gap: 10px;
   align-items: center;
-  min-width: 920px;
+  min-width: 1060px;
   padding: 10px 14px;
 }
 
