@@ -7957,6 +7957,8 @@ function Admin({ member, setPage, onMemberUpdate, memberOnly = false, favorites 
     keyword: '',
     clan: 'all',
     characterClass: 'all',
+    combatPowerMin: '',
+    combatPowerMax: '',
     status: 'all',
     role: 'all',
   });
@@ -8080,7 +8082,7 @@ function Admin({ member, setPage, onMemberUpdate, memberOnly = false, favorites 
   const memberClanOptions = useMemo(() => Array.from(new Set(members.map((row) => canonicalClanName(row.guildName)).filter(Boolean))).sort(), [members]);
   const memberClassOptions = useMemo(() => Array.from(new Set([...rosterSettings.classes.map((item) => item.name), ...members.map((row) => row.characterClass || '')].filter(Boolean))).sort(), [members, rosterSettings.classes]);
   const memberStatusOptions = useMemo(() => Array.from(new Set(members.map((row) => (row.active ? row.status || '활성' : '비활성')).filter(Boolean))).sort(), [members]);
-  const filteredMembers = useMemo(
+  const filteredMemberRows = useMemo(
     () =>
       members.filter((row) => {
         const keyword = normalize(memberFilters.keyword);
@@ -8088,17 +8090,29 @@ function Admin({ member, setPage, onMemberUpdate, memberOnly = false, favorites 
         const matchesKeyword = !keyword || [row.characterName, row.guildName, row.characterClass, row.rank, row.status, roleLabel(row.role), row.active ? '활성' : '비활성', row.combatPower, row.level].some((value) => normalize(value).includes(keyword));
         const matchesClan = memberFilters.clan === 'all' || canonicalClanName(row.guildName) === memberFilters.clan;
         const matchesClass = memberFilters.characterClass === 'all' || (row.characterClass || '') === memberFilters.characterClass;
+        const combatPower = Number(row.combatPower || 0);
+        const minimumPower = memberFilters.combatPowerMin === '' ? null : Number(memberFilters.combatPowerMin);
+        const maximumPower = memberFilters.combatPowerMax === '' ? null : Number(memberFilters.combatPowerMax);
+        const matchesCombatPower = (minimumPower === null || combatPower >= minimumPower) && (maximumPower === null || combatPower <= maximumPower);
         const matchesStatus = memberFilters.status === 'all' || rowStatus === memberFilters.status;
         const matchesRole = memberFilters.role === 'all' || row.role === memberFilters.role;
-        return matchesKeyword && matchesClan && matchesClass && matchesStatus && matchesRole;
+        return matchesKeyword && matchesClan && matchesClass && matchesCombatPower && matchesStatus && matchesRole;
       }),
     [members, memberFilters]
   );
+  const {
+    sortedRows: filteredMembers,
+    sortKey: memberSortKey,
+    sortDirection: memberSortDirection,
+    toggleSort: toggleMemberSort,
+  } = useSortableRows(filteredMemberRows, 'combatPower', 'desc');
   const resetMemberFilters = () =>
     setMemberFilters({
       keyword: '',
       clan: 'all',
       characterClass: 'all',
+      combatPowerMin: '',
+      combatPowerMax: '',
       status: 'all',
       role: 'all',
     });
@@ -8379,6 +8393,26 @@ function Admin({ member, setPage, onMemberUpdate, memberOnly = false, favorites 
             </select>
           </label>
           <label>
+            최소 전투력
+            <input
+              type="number"
+              min="0"
+              value={memberFilters.combatPowerMin}
+              onChange={(event) => setMemberFilters({ ...memberFilters, combatPowerMin: event.target.value })}
+              placeholder="최소값"
+            />
+          </label>
+          <label>
+            최대 전투력
+            <input
+              type="number"
+              min="0"
+              value={memberFilters.combatPowerMax}
+              onChange={(event) => setMemberFilters({ ...memberFilters, combatPowerMax: event.target.value })}
+              placeholder="최대값"
+            />
+          </label>
+          <label>
             레벨
             <input type="number" min="0" value={createForm.level} onChange={(e) => setCreateForm({ ...createForm, level: e.target.value })} />
           </label>
@@ -8533,9 +8567,9 @@ function Admin({ member, setPage, onMemberUpdate, memberOnly = false, favorites 
               <tr>
                 <th>닉네임</th>
                 <th>길드</th>
-                <th>클래스</th>
+                <SortableHeader label="클래스" field="characterClass" sortKey={memberSortKey} sortDirection={memberSortDirection} onSort={toggleMemberSort} />
                 <th>레벨</th>
-                <th>전투력</th>
+                <SortableHeader label="전투력" field="combatPower" sortKey={memberSortKey} sortDirection={memberSortDirection} onSort={toggleMemberSort} />
                 <th>직급</th>
                 <th>상태</th>
                 <th>권한</th>
