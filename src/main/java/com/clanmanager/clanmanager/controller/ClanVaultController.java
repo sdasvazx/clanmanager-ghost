@@ -129,6 +129,30 @@ public class ClanVaultController {
                 .toList();
     }
 
+    @DeleteMapping("/member-balances/reset")
+    @Transactional
+    public Map<String, Object> resetMemberBalances(@RequestParam Long adminMemberId) {
+        requireAdmin(adminMemberId);
+
+        long deletedClaimRequests = distributionClaimRequestRepository.count();
+        long deletedTransactions = transactionRepository.count();
+
+        // Claim requests may reference vault transactions, so remove them first.
+        distributionClaimRequestRepository.deleteAllInBatch();
+        transactionRepository.deleteAllInBatch();
+
+        ClanVault vault = getOrCreateVaultWithLock();
+        vault.setBalanceDiamonds(0L);
+        vaultRepository.save(vault);
+
+        return Map.of(
+                "message", "통장 내역 초기화 완료",
+                "deletedTransactions", deletedTransactions,
+                "deletedClaimRequests", deletedClaimRequests,
+                "balanceDiamonds", 0L
+        );
+    }
+
     @GetMapping("/member-balance/{memberId}")
     @Transactional
     public MemberVaultBalanceDto getMemberBalance(@PathVariable Long memberId, @RequestParam Long requesterMemberId) {

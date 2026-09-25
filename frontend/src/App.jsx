@@ -5415,6 +5415,28 @@ function ClanVaultPage({ member, readonly = false }) {
     }
   };
 
+  const resetHistory = async () => {
+    if (!window.confirm('클랜원 명단은 유지하고 모든 통장 잔액·적립액·출금액과 관련 내역을 0으로 초기화할까요?')) return;
+    const confirmation = window.prompt('되돌릴 수 없습니다. 계속하려면 “초기화”를 입력해 주세요.');
+    if (confirmation?.trim() !== '초기화') {
+      if (confirmation !== null) setMessage('입력값이 일치하지 않아 초기화를 취소했습니다.');
+      return;
+    }
+
+    setLoading(true);
+    setMessage('');
+    try {
+      const result = await request(`/vault/member-balances/reset?adminMemberId=${member.memberId}`, { method: 'DELETE' });
+      await load();
+      setHistory(null);
+      setMessage(`${result.message} · 클랜원 ${balances.length}명은 그대로 유지됩니다.`);
+    } catch (err) {
+      setMessage(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <>
       <section className="vault-hero">
@@ -5446,8 +5468,8 @@ function ClanVaultPage({ member, readonly = false }) {
             >
               ▱&nbsp; 출금
             </button>
-            <button type="button" className="reset" disabled title="내역 초기화 기능은 추후 지원됩니다.">
-              ♜&nbsp; 내역초기화
+            <button type="button" className="reset" disabled={loading} title="클랜원은 유지하고 잔액·적립·출금 내역만 초기화합니다." onClick={resetHistory}>
+              ♜&nbsp; {loading ? '처리중' : '내역초기화'}
             </button>
           </div>
         )}
