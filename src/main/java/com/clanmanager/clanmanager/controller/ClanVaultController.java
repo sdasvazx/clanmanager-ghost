@@ -460,6 +460,29 @@ public class ClanVaultController {
         return saveTransaction(VaultTransactionType.ADJUSTMENT, changedAmount, vault, null, request);
     }
 
+    @DeleteMapping("/reset")
+    @Transactional
+    public Map<String, Object> resetVault(@RequestParam Long adminMemberId) {
+        requireAdmin(adminMemberId);
+        long deletedClaimRequests = distributionClaimRequestRepository.count();
+        long deletedTransactions = transactionRepository.count();
+
+        // 수령 신청이 거래 내역을 참조하므로 신청을 먼저 삭제해야 한다.
+        distributionClaimRequestRepository.deleteAllInBatch();
+        transactionRepository.deleteAllInBatch();
+
+        ClanVault vault = getOrCreateVaultWithLock();
+        vault.setBalanceDiamonds(0L);
+        vaultRepository.save(vault);
+
+        return Map.of(
+                "message", "통장 내역을 초기화했습니다.",
+                "deletedClaimRequests", deletedClaimRequests,
+                "deletedTransactions", deletedTransactions,
+                "balanceDiamonds", 0L
+        );
+    }
+
     private List<VaultTransactionResponseDto> findRecentTransactions() {
         return transactionRepository.findTop50ByOrderByCreatedAtDesc().stream()
                 .map(VaultTransactionResponseDto::from)
