@@ -1224,6 +1224,22 @@ function ForcedPasswordChangeScreen({ member, onComplete, onLogout }) {
     }
   };
 
+  const resetVaultHistory = async () => {
+    if (!window.confirm('통장 입금·분배·출금 내역과 모든 클랜원의 잔액을 전부 0으로 초기화할까요?\n\n삭제된 내역은 복구할 수 없습니다.')) return;
+    setLoading(true);
+    setMessage('');
+    try {
+      const result = await request(`/vault/reset?adminMemberId=${member.memberId}`, { method: 'DELETE' });
+      setHistory(null);
+      await load();
+      setMessage(`통장 내역 초기화 완료: 거래 ${result.deletedTransactions ?? 0}건을 삭제했습니다.`);
+    } catch (err) {
+      setMessage(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <main className="auth-page">
       <section className="auth-card light-auth">
@@ -5446,8 +5462,8 @@ function ClanVaultPage({ member, readonly = false }) {
             >
               ▱&nbsp; 출금
             </button>
-            <button type="button" className="reset" disabled title="내역 초기화 기능은 추후 지원됩니다.">
-              ♜&nbsp; 내역초기화
+            <button type="button" className="reset" disabled={loading} onClick={resetVaultHistory}>
+              ♜&nbsp; {loading ? '처리중...' : '내역초기화'}
             </button>
           </div>
         )}
