@@ -425,7 +425,7 @@ public class BossParticipationController {
             return null;
         }
 
-        return activityTypeRepository.findByTypeName(name)
+        return activityTypeRepository.findFirstByTypeNameOrderByActivityTypeIdAsc(name)
                 .or(() -> findActivityTypeByKeyword(name))
                 .orElse(null);
     }
@@ -450,44 +450,44 @@ public class BossParticipationController {
         String compact = bossName.replaceAll("\\s+", "").toLowerCase();
 
         if (compact.contains("13")) {
-            return activityTypeRepository.findByTypeName("13\uC2DC (2\uC131)")
-                    .or(() -> activityTypeRepository.findByTypeName("13\uC2DC \uBCF4\uC2A4"));
+            return activityTypeRepository.findFirstByTypeNameOrderByActivityTypeIdAsc("13\uC2DC (2\uC131)")
+                    .or(() -> activityTypeRepository.findFirstByTypeNameOrderByActivityTypeIdAsc("13\uC2DC \uBCF4\uC2A4"));
         }
         if (compact.contains("17")) {
-            return activityTypeRepository.findByTypeName("17\uC2DC (1\uC131)")
-                    .or(() -> activityTypeRepository.findByTypeName("17\uC2DC \uBCF4\uC2A4"));
+            return activityTypeRepository.findFirstByTypeNameOrderByActivityTypeIdAsc("17\uC2DC (1\uC131)")
+                    .or(() -> activityTypeRepository.findFirstByTypeNameOrderByActivityTypeIdAsc("17\uC2DC \uBCF4\uC2A4"));
         }
         if (compact.contains("21")) {
-            return activityTypeRepository.findByTypeName("21\uC2DC (2\uC131)")
-                    .or(() -> activityTypeRepository.findByTypeName("21\uC2DC \uBCF4\uC2A4"));
+            return activityTypeRepository.findFirstByTypeNameOrderByActivityTypeIdAsc("21\uC2DC (2\uC131)")
+                    .or(() -> activityTypeRepository.findFirstByTypeNameOrderByActivityTypeIdAsc("21\uC2DC \uBCF4\uC2A4"));
         }
         if (compact.contains("\uC18C\uC218\uC7C1")) {
-            return activityTypeRepository.findByTypeName("\uC18C\uC218\uC7C1");
+            return activityTypeRepository.findFirstByTypeNameOrderByActivityTypeIdAsc("\uC18C\uC218\uC7C1");
         }
         if (compact.contains("\uC815\uC608")) {
-            return activityTypeRepository.findByTypeName("\uC815\uC608\uB358\uC804\uBCF4\uC2A4");
+            return activityTypeRepository.findFirstByTypeNameOrderByActivityTypeIdAsc("\uC815\uC608\uB358\uC804\uBCF4\uC2A4");
         }
         if (compact.contains("\uC5D0\uB178\uD06C")) {
-            return activityTypeRepository.findByTypeName("\uC5D0\uB178\uD06C");
+            return activityTypeRepository.findFirstByTypeNameOrderByActivityTypeIdAsc("\uC5D0\uB178\uD06C");
         }
         if (compact.contains("\uB9C8\uC288\uBBF8\uB4DC") || compact.contains("\uB9C8\uC288")) {
-            return activityTypeRepository.findByTypeName("\uB9C8\uC288\uBBF8\uB4DC");
+            return activityTypeRepository.findFirstByTypeNameOrderByActivityTypeIdAsc("\uB9C8\uC288\uBBF8\uB4DC");
         }
         if (compact.contains("\uACB0\uC2B9")) {
-            return activityTypeRepository.findByTypeName("\uACB0\uC2B9\uC804");
+            return activityTypeRepository.findFirstByTypeNameOrderByActivityTypeIdAsc("\uACB0\uC2B9\uC804");
         }
         if (compact.contains("\uC804\uCD08")) {
-            return activityTypeRepository.findByTypeName("\uC804\uCD08\uC804");
+            return activityTypeRepository.findFirstByTypeNameOrderByActivityTypeIdAsc("\uC804\uCD08\uC804");
         }
         if (compact.contains("\uD074\uB79C\uC784\uBB34") || compact.contains("\uC784\uBB34")) {
-            return activityTypeRepository.findByTypeName("\uD074\uB79C\uC784\uBB34");
+            return activityTypeRepository.findFirstByTypeNameOrderByActivityTypeIdAsc("\uD074\uB79C\uC784\uBB34");
         }
         if (compact.contains("\uC218\uD638")) {
-            return activityTypeRepository.findByTypeName("\uD074\uB79C\uC218\uD638")
-                    .or(() -> activityTypeRepository.findByTypeName("\uC218\uD638"));
+            return activityTypeRepository.findFirstByTypeNameOrderByActivityTypeIdAsc("\uD074\uB79C\uC218\uD638")
+                    .or(() -> activityTypeRepository.findFirstByTypeNameOrderByActivityTypeIdAsc("\uC218\uD638"));
         }
         if (compact.contains("\uC7C1\uD0C8")) {
-            return activityTypeRepository.findByTypeName("\uC7C1\uD0C8\uC804");
+            return activityTypeRepository.findFirstByTypeNameOrderByActivityTypeIdAsc("\uC7C1\uD0C8\uC804");
         }
         return Optional.empty();
     }
