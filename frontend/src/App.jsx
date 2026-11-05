@@ -8234,13 +8234,18 @@ function Admin({ member, setPage, onMemberUpdate, memberOnly = false, favorites 
   };
 
   const deleteMember = async (targetMember) => {
-    if (!window.confirm(`${targetMember.characterName} 클랜원을 삭제할까요? 과거 기록은 보존되고 목록에서는 숨김 처리됩니다.`)) return;
+    if (
+      !window.confirm(
+        `${targetMember.characterName} 클랜원을 정말 완전히 삭제할까요?\n\n회원 계정과 출석·분배·통장·컬렉템 등 연결된 개인 기록이 DB에서 삭제되며 복구할 수 없습니다.`
+      )
+    )
+      return;
     setLoadingId(targetMember.memberId);
     setMessage('');
     try {
       await request(`/members/${targetMember.memberId}?adminMemberId=${member.memberId}`, { method: 'DELETE' });
       await load();
-      setMessage(`${targetMember.characterName} 클랜원을 삭제했습니다.`);
+      setMessage(`${targetMember.characterName} 클랜원과 연결된 개인 기록을 완전히 삭제했습니다.`);
     } catch (err) {
       setMessage(err.message);
     } finally {
