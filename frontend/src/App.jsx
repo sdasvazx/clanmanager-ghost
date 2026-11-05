@@ -7959,7 +7959,7 @@ function Admin({ member, setPage, onMemberUpdate, memberOnly = false, favorites 
     characterClass: 'all',
     status: 'all',
     role: 'all',
-    combatPowerSort: 'none',
+    combatPowerSort: 'desc',
   });
   const [rosterSettings] = useRosterSettings();
   const managedClanOptions = rosterSettings.clans.map((item) => item.name);
@@ -8110,7 +8110,7 @@ function Admin({ member, setPage, onMemberUpdate, memberOnly = false, favorites 
       characterClass: 'all',
       status: 'all',
       role: 'all',
-      combatPowerSort: 'none',
+      combatPowerSort: 'desc',
     });
   const exportMembersToExcel = () => {
     if (!filteredMembers.length) {
