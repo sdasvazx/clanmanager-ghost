@@ -7,6 +7,4 @@ import java.util.List;
 
 public interface ClanSettingRepository extends JpaRepository<ClanSetting, Long> {
     List<ClanSetting> findAllByOrderByDisplayOrderAscClanSettingIdAsc();
-
-    boolean existsByNameIgnoreCase(String name);
 }

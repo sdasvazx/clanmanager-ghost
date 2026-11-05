@@ -9087,17 +9087,6 @@ function GeneralSettingsPage({ member, setPage }) {
     setDraft(settings);
   }, [settings]);
 
-  const syncServerClans = (rows, current = draft) => {
-    const serverClans = normalizeSettingItems(
-      rows.map((row, index) => ({ id: `clan-${row.id ?? index}`, name: row.name, color: row.color })),
-      defaultRosterSettings.clans
-    );
-    const synced = { ...current, clans: serverClans };
-    setDraft(synced);
-    saveSettings(synced);
-    return synced;
-  };
-
   const persist = (next) => {
     const cleaned = {
       clans: normalizeSettingItems(next.clans, defaultRosterSettings.clans),
@@ -9113,11 +9102,17 @@ function GeneralSettingsPage({ member, setPage }) {
       }),
     })
       .then((rows) => {
-        syncServerClans(rows, cleaned);
+        const serverClans = normalizeSettingItems(
+          rows.map((row, index) => ({ id: `clan-${row.id ?? index}`, name: row.name, color: row.color })),
+          defaultRosterSettings.clans
+        );
+        const synced = { ...cleaned, clans: serverClans };
+        setDraft(synced);
+        saveSettings(synced);
       })
       .catch((error) => setMessage(error.message));
   };
-  const addItem = async (type) => {
+  const addItem = (type) => {
     const name = newItems[type].name.trim();
     if (!name) {
       setMessage('이름을 입력해 주세요.');
@@ -9125,30 +9120,6 @@ function GeneralSettingsPage({ member, setPage }) {
     }
     if (draft[type].some((item) => item.name.toLowerCase() === name.toLowerCase())) {
       setMessage('이미 등록된 이름입니다.');
-      return;
-    }
-    if (type === 'clans') {
-      setMessage('');
-      try {
-        const saved = await request('/settings/clans', {
-          method: 'POST',
-          body: JSON.stringify({
-            adminMemberId: member.memberId,
-            name,
-            color: newItems[type].color,
-          }),
-        });
-        const next = {
-          ...draft,
-          clans: [...draft.clans, { id: `clan-${saved.id}`, name: saved.name, color: saved.color }],
-        };
-        setDraft(next);
-        saveSettings(next);
-        setNewItems((prev) => ({ ...prev, clans: { ...prev.clans, name: '' } }));
-        setMessage(`${saved.name} 클랜을 추가했습니다.`);
-      } catch (error) {
-        setMessage(error.message);
-      }
       return;
     }
     persist({
@@ -9172,30 +9143,13 @@ function GeneralSettingsPage({ member, setPage }) {
       setDraft((prev) => ({ ...prev, [type]: nextItems }));
     }
   };
-  const deleteItem = async (type, id) => {
+  const deleteItem = (type, id) => {
     if (draft[type].length <= 1) {
       setMessage('목록은 최소 1개 이상 필요합니다.');
       return;
     }
     const target = draft[type].find((item) => item.id === id);
-    const targetName = target?.name || '선택한 항목';
-    if (!window.confirm(`${targetName}을(를) 정말 삭제할까요?\n삭제하면 클랜 목록에서 완전히 제거되며 되돌릴 수 없습니다.`)) return;
-    if (type === 'clans') {
-      const serverId = Number(String(id).replace(/^clan-/, ''));
-      if (!Number.isInteger(serverId) || serverId <= 0) {
-        setMessage('클랜 정보를 새로 불러온 뒤 다시 시도해 주세요.');
-        return;
-      }
-      setMessage('');
-      try {
-        const rows = await request(`/settings/clans/${serverId}?adminMemberId=${member.memberId}`, { method: 'DELETE' });
-        syncServerClans(rows);
-        setMessage(`${targetName} 클랜을 완전히 삭제했습니다.`);
-      } catch (error) {
-        setMessage(error.message);
-      }
-      return;
-    }
+    if (!window.confirm(`${target?.name || '선택한 항목'}을 목록에서 삭제할까요? 기존 클랜원의 저장 데이터는 변경되지 않습니다.`)) return;
     persist({ ...draft, [type]: draft[type].filter((item) => item.id !== id) });
     setMessage('삭제되었습니다.');
   };
