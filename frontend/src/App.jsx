@@ -1308,7 +1308,7 @@ function AuthScreen({ onLogin }) {
       <section className="auth-card light-auth">
         <div className="auth-mark">C</div>
         <p className="auth-kicker">CLAN MANAGER</p>
-        <h1>{isRegister ? '클랜에 합류하기' : '클랜 매니저'}</h1>
+        <h1>{isRegister ? '클랜에 합류하기' : '골목대장'}</h1>
         <p>캐릭터 정보와 클랜 활동을 한곳에서 관리하세요.</p>
         <form onSubmit={submit}>
           <label>
@@ -1443,7 +1443,7 @@ function Shell({ member, page, setPage, onLogout, children, favorites = [], togg
     if (member.role !== 'ADMIN') return undefined;
     document.title = totalAdminAlerts ? `(${totalAdminAlerts}) 귀신` : '귀신';
     return () => {
-      document.title = '귀신';
+      document.title = '골목대장';
     };
   }, [member.role, totalAdminAlerts]);
   const openAlertPage = (target) => {
@@ -9538,7 +9538,7 @@ export default function App() {
       <main className="auth-page">
         <section className="auth-card light-auth">
           <div className="auth-mark">C</div>
-          <h1>귀신</h1>
+          <h1>골목대장</h1>
           <p>자동 로그인 확인 중...</p>
         </section>
       </main>
