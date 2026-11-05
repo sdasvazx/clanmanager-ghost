@@ -59,7 +59,7 @@ public class InitialDataInitializer implements ApplicationRunner {
     }
 
     private ActivityType findType(String typeName) {
-        return activityTypeRepository.findByTypeName(typeName)
+        return activityTypeRepository.findFirstByTypeNameOrderByActivityTypeIdAsc(typeName)
                 .orElseThrow(() -> new IllegalStateException("기본 활동을 찾을 수 없습니다: " + typeName));
     }
 
@@ -83,7 +83,7 @@ public class InitialDataInitializer implements ApplicationRunner {
                 "\uD1A0\uC694\uC77C 22\uC2DC \uC5D0\uB178\uD06C", "\uD1A0\uC694\uC77C 22\uC2DC \uB9C8\uC288\uBBF8\uB4DC",
                 "\uC218\uC694\uC77C/\uAE08\uC694\uC77C 21\uC2DC 30\uBD84 \uC815\uC608\uB358\uC804\uBCF4\uC2A4"
         );
-        obsoleteNames.stream().map(activityTypeRepository::findByTypeName).flatMap(java.util.Optional::stream)
+        obsoleteNames.stream().map(activityTypeRepository::findFirstByTypeNameOrderByActivityTypeIdAsc).flatMap(java.util.Optional::stream)
                 .forEach(type -> {
                     type.setActive(false);
                     activityScheduleRepository.findByActivityType(type).forEach(schedule -> schedule.setActive(false));
