@@ -5415,28 +5415,6 @@ function ClanVaultPage({ member, readonly = false }) {
     }
   };
 
-  const resetHistory = async () => {
-    if (!window.confirm('클랜원 명단은 유지하고 모든 통장 잔액·적립액·출금액과 관련 내역을 0으로 초기화할까요?')) return;
-    const confirmation = window.prompt('되돌릴 수 없습니다. 계속하려면 “초기화”를 입력해 주세요.');
-    if (confirmation?.trim() !== '초기화') {
-      if (confirmation !== null) setMessage('입력값이 일치하지 않아 초기화를 취소했습니다.');
-      return;
-    }
-
-    setLoading(true);
-    setMessage('');
-    try {
-      const result = await request(`/vault/member-balances/reset?adminMemberId=${member.memberId}`, { method: 'DELETE' });
-      await load();
-      setHistory(null);
-      setMessage(`${result.message} · 클랜원 ${balances.length}명은 그대로 유지됩니다.`);
-    } catch (err) {
-      setMessage(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
     <>
       <section className="vault-hero">
@@ -5468,8 +5446,8 @@ function ClanVaultPage({ member, readonly = false }) {
             >
               ▱&nbsp; 출금
             </button>
-            <button type="button" className="reset" disabled={loading} title="클랜원은 유지하고 잔액·적립·출금 내역만 초기화합니다." onClick={resetHistory}>
-              ♜&nbsp; {loading ? '처리중' : '내역초기화'}
+            <button type="button" className="reset" disabled title="내역 초기화 기능은 추후 지원됩니다.">
+              ♜&nbsp; 내역초기화
             </button>
           </div>
         )}
@@ -7979,8 +7957,6 @@ function Admin({ member, setPage, onMemberUpdate, memberOnly = false, favorites 
     keyword: '',
     clan: 'all',
     characterClass: 'all',
-    combatPowerMin: '',
-    combatPowerMax: '',
     status: 'all',
     role: 'all',
   });
@@ -8104,7 +8080,7 @@ function Admin({ member, setPage, onMemberUpdate, memberOnly = false, favorites 
   const memberClanOptions = useMemo(() => Array.from(new Set(members.map((row) => canonicalClanName(row.guildName)).filter(Boolean))).sort(), [members]);
   const memberClassOptions = useMemo(() => Array.from(new Set([...rosterSettings.classes.map((item) => item.name), ...members.map((row) => row.characterClass || '')].filter(Boolean))).sort(), [members, rosterSettings.classes]);
   const memberStatusOptions = useMemo(() => Array.from(new Set(members.map((row) => (row.active ? row.status || '활성' : '비활성')).filter(Boolean))).sort(), [members]);
-  const filteredMemberRows = useMemo(
+  const filteredMembers = useMemo(
     () =>
       members.filter((row) => {
         const keyword = normalize(memberFilters.keyword);
@@ -8112,29 +8088,17 @@ function Admin({ member, setPage, onMemberUpdate, memberOnly = false, favorites 
         const matchesKeyword = !keyword || [row.characterName, row.guildName, row.characterClass, row.rank, row.status, roleLabel(row.role), row.active ? '활성' : '비활성', row.combatPower, row.level].some((value) => normalize(value).includes(keyword));
         const matchesClan = memberFilters.clan === 'all' || canonicalClanName(row.guildName) === memberFilters.clan;
         const matchesClass = memberFilters.characterClass === 'all' || (row.characterClass || '') === memberFilters.characterClass;
-        const combatPower = Number(row.combatPower || 0);
-        const minimumPower = memberFilters.combatPowerMin === '' ? null : Number(memberFilters.combatPowerMin);
-        const maximumPower = memberFilters.combatPowerMax === '' ? null : Number(memberFilters.combatPowerMax);
-        const matchesCombatPower = (minimumPower === null || combatPower >= minimumPower) && (maximumPower === null || combatPower <= maximumPower);
         const matchesStatus = memberFilters.status === 'all' || rowStatus === memberFilters.status;
         const matchesRole = memberFilters.role === 'all' || row.role === memberFilters.role;
-        return matchesKeyword && matchesClan && matchesClass && matchesCombatPower && matchesStatus && matchesRole;
+        return matchesKeyword && matchesClan && matchesClass && matchesStatus && matchesRole;
       }),
     [members, memberFilters]
   );
-  const {
-    sortedRows: filteredMembers,
-    sortKey: memberSortKey,
-    sortDirection: memberSortDirection,
-    toggleSort: toggleMemberSort,
-  } = useSortableRows(filteredMemberRows, 'combatPower', 'desc');
   const resetMemberFilters = () =>
     setMemberFilters({
       keyword: '',
       clan: 'all',
       characterClass: 'all',
-      combatPowerMin: '',
-      combatPowerMax: '',
       status: 'all',
       role: 'all',
     });
@@ -8415,26 +8379,6 @@ function Admin({ member, setPage, onMemberUpdate, memberOnly = false, favorites 
             </select>
           </label>
           <label>
-            최소 전투력
-            <input
-              type="number"
-              min="0"
-              value={memberFilters.combatPowerMin}
-              onChange={(event) => setMemberFilters({ ...memberFilters, combatPowerMin: event.target.value })}
-              placeholder="최소값"
-            />
-          </label>
-          <label>
-            최대 전투력
-            <input
-              type="number"
-              min="0"
-              value={memberFilters.combatPowerMax}
-              onChange={(event) => setMemberFilters({ ...memberFilters, combatPowerMax: event.target.value })}
-              placeholder="최대값"
-            />
-          </label>
-          <label>
             레벨
             <input type="number" min="0" value={createForm.level} onChange={(e) => setCreateForm({ ...createForm, level: e.target.value })} />
           </label>
@@ -8589,9 +8533,9 @@ function Admin({ member, setPage, onMemberUpdate, memberOnly = false, favorites 
               <tr>
                 <th>닉네임</th>
                 <th>길드</th>
-                <SortableHeader label="클래스" field="characterClass" sortKey={memberSortKey} sortDirection={memberSortDirection} onSort={toggleMemberSort} />
+                <th>클래스</th>
                 <th>레벨</th>
-                <SortableHeader label="전투력" field="combatPower" sortKey={memberSortKey} sortDirection={memberSortDirection} onSort={toggleMemberSort} />
+                <th>전투력</th>
                 <th>직급</th>
                 <th>상태</th>
                 <th>권한</th>
@@ -9087,6 +9031,17 @@ function GeneralSettingsPage({ member, setPage }) {
     setDraft(settings);
   }, [settings]);
 
+  const syncServerClans = (rows, current = draft) => {
+    const serverClans = normalizeSettingItems(
+      rows.map((row, index) => ({ id: `clan-${row.id ?? index}`, name: row.name, color: row.color })),
+      defaultRosterSettings.clans
+    );
+    const synced = { ...current, clans: serverClans };
+    setDraft(synced);
+    saveSettings(synced);
+    return synced;
+  };
+
   const persist = (next) => {
     const cleaned = {
       clans: normalizeSettingItems(next.clans, defaultRosterSettings.clans),
@@ -9102,17 +9057,11 @@ function GeneralSettingsPage({ member, setPage }) {
       }),
     })
       .then((rows) => {
-        const serverClans = normalizeSettingItems(
-          rows.map((row, index) => ({ id: `clan-${row.id ?? index}`, name: row.name, color: row.color })),
-          defaultRosterSettings.clans
-        );
-        const synced = { ...cleaned, clans: serverClans };
-        setDraft(synced);
-        saveSettings(synced);
+        syncServerClans(rows, cleaned);
       })
       .catch((error) => setMessage(error.message));
   };
-  const addItem = (type) => {
+  const addItem = async (type) => {
     const name = newItems[type].name.trim();
     if (!name) {
       setMessage('이름을 입력해 주세요.');
@@ -9120,6 +9069,30 @@ function GeneralSettingsPage({ member, setPage }) {
     }
     if (draft[type].some((item) => item.name.toLowerCase() === name.toLowerCase())) {
       setMessage('이미 등록된 이름입니다.');
+      return;
+    }
+    if (type === 'clans') {
+      setMessage('');
+      try {
+        const saved = await request('/settings/clans', {
+          method: 'POST',
+          body: JSON.stringify({
+            adminMemberId: member.memberId,
+            name,
+            color: newItems[type].color,
+          }),
+        });
+        const next = {
+          ...draft,
+          clans: [...draft.clans, { id: `clan-${saved.id}`, name: saved.name, color: saved.color }],
+        };
+        setDraft(next);
+        saveSettings(next);
+        setNewItems((prev) => ({ ...prev, clans: { ...prev.clans, name: '' } }));
+        setMessage(`${saved.name} 클랜을 추가했습니다.`);
+      } catch (error) {
+        setMessage(error.message);
+      }
       return;
     }
     persist({
@@ -9143,13 +9116,30 @@ function GeneralSettingsPage({ member, setPage }) {
       setDraft((prev) => ({ ...prev, [type]: nextItems }));
     }
   };
-  const deleteItem = (type, id) => {
+  const deleteItem = async (type, id) => {
     if (draft[type].length <= 1) {
       setMessage('목록은 최소 1개 이상 필요합니다.');
       return;
     }
     const target = draft[type].find((item) => item.id === id);
-    if (!window.confirm(`${target?.name || '선택한 항목'}을 목록에서 삭제할까요? 기존 클랜원의 저장 데이터는 변경되지 않습니다.`)) return;
+    const targetName = target?.name || '선택한 항목';
+    if (!window.confirm(`${targetName}을(를) 정말 삭제할까요?\n삭제하면 클랜 목록에서 완전히 제거되며 되돌릴 수 없습니다.`)) return;
+    if (type === 'clans') {
+      const serverId = Number(String(id).replace(/^clan-/, ''));
+      if (!Number.isInteger(serverId) || serverId <= 0) {
+        setMessage('클랜 정보를 새로 불러온 뒤 다시 시도해 주세요.');
+        return;
+      }
+      setMessage('');
+      try {
+        const rows = await request(`/settings/clans/${serverId}?adminMemberId=${member.memberId}`, { method: 'DELETE' });
+        syncServerClans(rows);
+        setMessage(`${targetName} 클랜을 완전히 삭제했습니다.`);
+      } catch (error) {
+        setMessage(error.message);
+      }
+      return;
+    }
     persist({ ...draft, [type]: draft[type].filter((item) => item.id !== id) });
     setMessage('삭제되었습니다.');
   };
