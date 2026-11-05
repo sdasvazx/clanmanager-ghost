@@ -7959,6 +7959,7 @@ function Admin({ member, setPage, onMemberUpdate, memberOnly = false, favorites 
     characterClass: 'all',
     status: 'all',
     role: 'all',
+    combatPowerSort: 'none',
   });
   const [rosterSettings] = useRosterSettings();
   const managedClanOptions = rosterSettings.clans.map((item) => item.name);
@@ -8081,8 +8082,8 @@ function Admin({ member, setPage, onMemberUpdate, memberOnly = false, favorites 
   const memberClassOptions = useMemo(() => Array.from(new Set([...rosterSettings.classes.map((item) => item.name), ...members.map((row) => row.characterClass || '')].filter(Boolean))).sort(), [members, rosterSettings.classes]);
   const memberStatusOptions = useMemo(() => Array.from(new Set(members.map((row) => (row.active ? row.status || '활성' : '비활성')).filter(Boolean))).sort(), [members]);
   const filteredMembers = useMemo(
-    () =>
-      members.filter((row) => {
+    () => {
+      const filtered = members.filter((row) => {
         const keyword = normalize(memberFilters.keyword);
         const rowStatus = row.active ? row.status || '활성' : '비활성';
         const matchesKeyword = !keyword || [row.characterName, row.guildName, row.characterClass, row.rank, row.status, roleLabel(row.role), row.active ? '활성' : '비활성', row.combatPower, row.level].some((value) => normalize(value).includes(keyword));
@@ -8091,7 +8092,15 @@ function Admin({ member, setPage, onMemberUpdate, memberOnly = false, favorites 
         const matchesStatus = memberFilters.status === 'all' || rowStatus === memberFilters.status;
         const matchesRole = memberFilters.role === 'all' || row.role === memberFilters.role;
         return matchesKeyword && matchesClan && matchesClass && matchesStatus && matchesRole;
-      }),
+      });
+      if (memberFilters.combatPowerSort === 'none') return filtered;
+      const direction = memberFilters.combatPowerSort === 'asc' ? 1 : -1;
+      return [...filtered].sort((left, right) => {
+        const powerDifference = (Number(left.combatPower) || 0) - (Number(right.combatPower) || 0);
+        if (powerDifference !== 0) return powerDifference * direction;
+        return String(left.characterName || '').localeCompare(String(right.characterName || ''), 'ko');
+      });
+    },
     [members, memberFilters]
   );
   const resetMemberFilters = () =>
@@ -8101,6 +8110,7 @@ function Admin({ member, setPage, onMemberUpdate, memberOnly = false, favorites 
       characterClass: 'all',
       status: 'all',
       role: 'all',
+      combatPowerSort: 'none',
     });
   const exportMembersToExcel = () => {
     if (!filteredMembers.length) {
@@ -8505,6 +8515,17 @@ function Admin({ member, setPage, onMemberUpdate, memberOnly = false, favorites 
               <option value="MEMBER">클랜원</option>
             </select>
           </label>
+          <label>
+            전투력 정렬
+            <select
+              value={memberFilters.combatPowerSort}
+              onChange={(event) => setMemberFilters({ ...memberFilters, combatPowerSort: event.target.value })}
+            >
+              <option value="none">기본 순서</option>
+              <option value="desc">높은 순 ↓</option>
+              <option value="asc">낮은 순 ↑</option>
+            </select>
+          </label>
           <button type="button" className="outline-button no-margin" onClick={resetMemberFilters}>
             필터 초기화
           </button>
@@ -8535,7 +8556,7 @@ function Admin({ member, setPage, onMemberUpdate, memberOnly = false, favorites 
                 <th>길드</th>
                 <th>클래스</th>
                 <th>레벨</th>
-                <th>전투력</th>
+                <th>전투력{memberFilters.combatPowerSort === 'desc' ? ' ↓' : memberFilters.combatPowerSort === 'asc' ? ' ↑' : ''}</th>
                 <th>직급</th>
                 <th>상태</th>
                 <th>권한</th>
