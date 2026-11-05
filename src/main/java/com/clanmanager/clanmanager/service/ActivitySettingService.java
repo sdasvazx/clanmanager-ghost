@@ -99,7 +99,7 @@ public class ActivitySettingService {
         for (ActivitySettingDto.Row row : activeRows) {
             String activityName = clean(row.getActivityName());
             ActivityType activityType = row.getActivityTypeId() == null
-                    ? activityTypeRepository.findByTypeName(activityName).orElseGet(ActivityType::new)
+                    ? activityTypeRepository.findFirstByTypeNameOrderByActivityTypeIdAsc(activityName).orElseGet(ActivityType::new)
                     : activityTypeRepository.findById(row.getActivityTypeId())
                     .orElseThrow(() -> new IllegalArgumentException("활동 설정을 찾을 수 없습니다."));
             int participationScore = number(row.getParticipationScore(), 0);
@@ -127,7 +127,7 @@ public class ActivitySettingService {
     }
 
     private ActivityType findOrCreateDefaultActivity(String name) {
-        return activityTypeRepository.findByTypeName(name)
+        return activityTypeRepository.findFirstByTypeNameOrderByActivityTypeIdAsc(name)
                 .or(() -> findLegacyActivity(name))
                 .orElseGet(() -> activityTypeRepository.save(ActivityType.builder()
                         .typeName(name)
@@ -144,14 +144,14 @@ public class ActivitySettingService {
 
     private java.util.Optional<ActivityType> findLegacyActivity(String name) {
         return switch (name) {
-            case "13시 (2성)" -> activityTypeRepository.findByTypeName("13시 보스")
-                    .or(() -> activityTypeRepository.findByTypeName("매일 13시 보스"));
-            case "17시 (1성)" -> activityTypeRepository.findByTypeName("17시 보스")
-                    .or(() -> activityTypeRepository.findByTypeName("매일 17시 보스"));
-            case "21시 (2성)" -> activityTypeRepository.findByTypeName("21시 보스")
-                    .or(() -> activityTypeRepository.findByTypeName("매일 21시 보스"));
-            case "클랜수호" -> activityTypeRepository.findByTypeName("수호");
-            case "전초전" -> activityTypeRepository.findByTypeName("쟁탈전");
+            case "13시 (2성)" -> activityTypeRepository.findFirstByTypeNameOrderByActivityTypeIdAsc("13시 보스")
+                    .or(() -> activityTypeRepository.findFirstByTypeNameOrderByActivityTypeIdAsc("매일 13시 보스"));
+            case "17시 (1성)" -> activityTypeRepository.findFirstByTypeNameOrderByActivityTypeIdAsc("17시 보스")
+                    .or(() -> activityTypeRepository.findFirstByTypeNameOrderByActivityTypeIdAsc("매일 17시 보스"));
+            case "21시 (2성)" -> activityTypeRepository.findFirstByTypeNameOrderByActivityTypeIdAsc("21시 보스")
+                    .or(() -> activityTypeRepository.findFirstByTypeNameOrderByActivityTypeIdAsc("매일 21시 보스"));
+            case "클랜수호" -> activityTypeRepository.findFirstByTypeNameOrderByActivityTypeIdAsc("수호");
+            case "전초전" -> activityTypeRepository.findFirstByTypeNameOrderByActivityTypeIdAsc("쟁탈전");
             default -> java.util.Optional.empty();
         };
     }
