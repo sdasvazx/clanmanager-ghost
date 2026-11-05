@@ -15,6 +15,8 @@ import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -40,6 +42,7 @@ public class MemberController {
     private final MemberRepository memberRepository;
     private final MemberSpecHistoryRepository memberSpecHistoryRepository;
     private final ParticipationService participationService;
+    private final JdbcTemplate jdbcTemplate;
 
     @GetMapping("/{memberId}/my-info")
     public MemberInfoResponseDto getMyInfo(@PathVariable Long memberId) {
@@ -435,6 +438,7 @@ public class MemberController {
     }
 
     @DeleteMapping("/{memberId}")
+    @Transactional
     public Map<String, Object> deleteMember(
             @PathVariable Long memberId,
             @RequestParam Long adminMemberId
@@ -452,15 +456,42 @@ public class MemberController {
             throw new IllegalArgumentException("마지막 운영자는 삭제할 수 없습니다.");
         }
 
-        member.setActive(false);
-        member.setStatus("삭제됨");
-        memberRepository.save(member);
+        String characterName = member.getCharacterName();
+        int deletedRecords = permanentlyDeleteMemberData(memberId, characterName);
+        memberRepository.delete(member);
+        memberRepository.flush();
 
         return Map.of(
-                "message", "클랜원 삭제 완료",
-                "memberId", member.getMemberId(),
-                "characterName", member.getCharacterName()
+                "message", "클랜원 및 관련 데이터 완전 삭제 완료",
+                "memberId", memberId,
+                "characterName", characterName,
+                "deletedRecords", deletedRecords
         );
+    }
+
+    private int permanentlyDeleteMemberData(Long memberId, String characterName) {
+        int deleted = 0;
+        deleted += jdbcTemplate.update("DELETE FROM refresh_tokens WHERE member_id = ?", memberId);
+        deleted += jdbcTemplate.update("DELETE FROM collection_histories WHERE member_id = ? OR edited_by_member_id = ?", memberId, memberId);
+        deleted += jdbcTemplate.update("DELETE FROM member_spec_histories WHERE member_id = ? OR edited_by_member_id = ?", memberId, memberId);
+        deleted += jdbcTemplate.update("DELETE FROM collection_statuses WHERE member_id = ?", memberId);
+        deleted += jdbcTemplate.update("DELETE FROM activity_attendances WHERE member_id = ?", memberId);
+        deleted += jdbcTemplate.update("DELETE FROM boss_participation_members WHERE member_id = ? OR character_name = ?", memberId, characterName);
+        deleted += jdbcTemplate.update("DELETE FROM collection_records WHERE character_name = ?", characterName);
+        deleted += jdbcTemplate.update("DELETE FROM item_requests WHERE requester_member_id = ?", memberId);
+        jdbcTemplate.update("UPDATE item_requests SET processed_by_member_id = NULL, processed_by_name = NULL WHERE processed_by_member_id = ?", memberId);
+        deleted += jdbcTemplate.update(
+                "DELETE FROM distribution_claim_requests WHERE requester_member_id = ? OR source_transaction_id IN (SELECT transaction_id FROM vault_transactions WHERE target_member_id = ?)",
+                memberId,
+                memberId
+        );
+        jdbcTemplate.update("UPDATE distribution_claim_requests SET processed_by_member_id = NULL, processed_by_name = NULL WHERE processed_by_member_id = ?", memberId);
+        deleted += jdbcTemplate.update("DELETE FROM vault_transactions WHERE target_member_id = ?", memberId);
+        jdbcTemplate.update("UPDATE vault_transactions SET created_by = NULL WHERE created_by = ?", memberId);
+        jdbcTemplate.update("UPDATE boss_participation_records SET created_by_member_id = NULL WHERE created_by_member_id = ?", memberId);
+        deleted += jdbcTemplate.update("DELETE FROM notices WHERE created_by = ?", memberId);
+        jdbcTemplate.update("UPDATE distribution_snapshots SET created_by_member_id = NULL, created_by_name = NULL WHERE created_by_member_id = ?", memberId);
+        return deleted;
     }
 
     @DeleteMapping("/reset")
