@@ -1441,7 +1441,7 @@ function Shell({ member, page, setPage, onLogout, children, favorites = [], togg
   const totalAdminAlerts = adminAlerts.registrations.length + adminAlerts.distributionClaims.length + adminAlerts.itemRequests.length;
   useEffect(() => {
     if (member.role !== 'ADMIN') return undefined;
-    document.title = totalAdminAlerts ? `(${totalAdminAlerts}) 귀신` : '귀신';
+    document.title = totalAdminAlerts ? `(${totalAdminAlerts}) 골목대장` : '골목대장';
     return () => {
       document.title = '골목대장';
     };
