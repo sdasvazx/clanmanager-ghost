@@ -25,6 +25,7 @@ import java.util.Map;
 public class ManagementRecordController {
 
     private final InventoryItemRepository inventoryItemRepository;
+    private final InventoryRequestCheckRepository inventoryRequestCheckRepository;
     private final AllItemStockRepository allItemStockRepository;
     private final ItemBidRepository itemBidRepository;
     private final CollectionRecordRepository collectionRecordRepository;
@@ -87,8 +88,22 @@ public class ManagementRecordController {
     );
 
     @GetMapping("/inventory")
-    public List<InventoryItem> getInventory() {
-        return inventoryItemRepository.findAllByOrderByCreatedAtDesc();
+    @Transactional(readOnly = true)
+    public List<InventoryItemResponse> getInventory() {
+        Map<Long, List<InventoryRequester>> requestersByItem = new LinkedHashMap<>();
+        inventoryRequestCheckRepository.findAllByOrderByCreatedAtAsc().forEach(check ->
+                requestersByItem.computeIfAbsent(check.getInventoryItem().getInventoryItemId(), ignored -> new ArrayList<>())
+                        .add(new InventoryRequester(check.getMember().getMemberId(), check.getMemberName()))
+        );
+        return inventoryItemRepository.findAllByOrderByCreatedAtDesc().stream()
+                .map(item -> {
+                    List<InventoryRequester> requesters = new ArrayList<>(requestersByItem.getOrDefault(item.getInventoryItemId(), List.of()));
+                    if (item.getRequestedByMemberId() != null && requesters.stream().noneMatch(row -> row.memberId().equals(item.getRequestedByMemberId()))) {
+                        requesters.add(new InventoryRequester(item.getRequestedByMemberId(), item.getRequestedByName()));
+                    }
+                    return InventoryItemResponse.from(item, requesters);
+                })
+                .toList();
     }
 
     @PostMapping("/inventory")
@@ -118,7 +133,8 @@ public class ManagementRecordController {
     }
 
     @PatchMapping("/inventory/{itemId}/request-check")
-    public InventoryItem toggleInventoryRequest(
+    @Transactional
+    public InventoryItemResponse toggleInventoryRequest(
             @PathVariable Long itemId,
             @RequestParam Long memberId
     ) {
@@ -127,19 +143,31 @@ public class ManagementRecordController {
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 클랜원입니다."));
         InventoryItem item = inventoryItemRepository.findById(itemId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 재고입니다."));
-        if (memberId.equals(item.getRequestedByMemberId())) {
+        var existing = inventoryRequestCheckRepository.findByInventoryItem_InventoryItemIdAndMember_MemberId(itemId, memberId);
+        if (existing.isPresent()) {
+            inventoryRequestCheckRepository.delete(existing.get());
+        } else if (memberId.equals(item.getRequestedByMemberId())) {
             item.setRequestedByMemberId(null);
             item.setRequestedByName(null);
+            inventoryItemRepository.save(item);
         } else {
-            item.setRequestedByMemberId(memberId);
-            item.setRequestedByName(member.getCharacterName());
+            inventoryRequestCheckRepository.save(InventoryRequestCheck.builder()
+                    .inventoryItem(item)
+                    .member(member)
+                    .memberName(member.getCharacterName())
+                    .build());
         }
-        return inventoryItemRepository.save(item);
+        return getInventory().stream()
+                .filter(row -> row.inventoryItemId().equals(itemId))
+                .findFirst()
+                .orElseThrow();
     }
 
     @DeleteMapping("/inventory/{itemId}")
+    @Transactional
     public Map<String, Object> deleteInventory(@PathVariable Long itemId, @RequestParam Long adminMemberId) {
         validateAdmin(adminMemberId);
+        inventoryRequestCheckRepository.deleteAllByInventoryItem_InventoryItemId(itemId);
         inventoryItemRepository.deleteById(itemId);
         return Map.of("message", "재고 기록 삭제 완료", "itemId", itemId);
     }
@@ -619,6 +647,27 @@ public class ManagementRecordController {
 
         @NotNull(message = "운영자 정보가 필요합니다.")
         private Long adminMemberId;
+    }
+
+    public record InventoryRequester(Long memberId, String characterName) {
+    }
+
+    public record InventoryItemResponse(
+            Long inventoryItemId,
+            String itemName,
+            Integer quantity,
+            String location,
+            String memo,
+            List<InventoryRequester> requesters,
+            java.time.LocalDateTime createdAt,
+            java.time.LocalDateTime updatedAt
+    ) {
+        static InventoryItemResponse from(InventoryItem item, List<InventoryRequester> requesters) {
+            return new InventoryItemResponse(
+                    item.getInventoryItemId(), item.getItemName(), item.getQuantity(), item.getLocation(), item.getMemo(),
+                    requesters, item.getCreatedAt(), item.getUpdatedAt()
+            );
+        }
     }
 
     @Getter

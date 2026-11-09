@@ -509,6 +509,7 @@ public class MemberController {
         deleted += jdbcTemplate.update("DELETE FROM boss_participation_members WHERE member_id = ? OR character_name = ?", memberId, characterName);
         deleted += jdbcTemplate.update("DELETE FROM collection_records WHERE character_name = ?", characterName);
         deleted += jdbcTemplate.update("DELETE FROM item_requests WHERE requester_member_id = ?", memberId);
+        deleted += jdbcTemplate.update("DELETE FROM inventory_request_checks WHERE member_id = ?", memberId);
         jdbcTemplate.update("UPDATE item_requests SET processed_by_member_id = NULL, processed_by_name = NULL WHERE processed_by_member_id = ?", memberId);
         deleted += jdbcTemplate.update(
                 "DELETE FROM distribution_claim_requests WHERE requester_member_id = ? OR source_transaction_id IN (SELECT transaction_id FROM vault_transactions WHERE target_member_id = ?)",
@@ -671,11 +672,12 @@ public class MemberController {
         private Boolean locked;
     }
 
-    public record CombatPowerRow(Long memberId, String characterName, Integer combatPower, boolean locked) {
+    public record CombatPowerRow(Long memberId, String characterName, String guildName, Integer combatPower, boolean locked) {
         static CombatPowerRow from(Member member) {
             return new CombatPowerRow(
                     member.getMemberId(),
                     member.getCharacterName(),
+                    member.getGuildName(),
                     member.getCombatPower(),
                     Boolean.TRUE.equals(member.getCombatPowerLocked())
             );

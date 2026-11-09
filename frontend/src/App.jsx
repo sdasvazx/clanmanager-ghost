@@ -6666,12 +6666,20 @@ function CombatPowerPage({ member }) {
   const [rows, setRows] = useState([]);
   const [message, setMessage] = useState('');
   const [savingId, setSavingId] = useState(null);
+  const [clanFilter, setClanFilter] = useState('all');
   const isAdmin = member.role === 'ADMIN';
   const load = () => request(`/members/combat-powers?requesterMemberId=${member.memberId}`).then(setRows).catch((err) => setMessage(err.message));
   useEffect(() => {
     load();
   }, []);
   const changeRow = (memberId, patch) => setRows((current) => current.map((row) => (row.memberId === memberId ? { ...row, ...patch } : row)));
+  const clanOptions = useMemo(() => Array.from(new Set(rows.map((row) => row.guildName || '미분류'))).sort((a, b) => a.localeCompare(b, 'ko')), [rows]);
+  const visibleRows = useMemo(
+    () => rows
+      .filter((row) => clanFilter === 'all' || (row.guildName || '미분류') === clanFilter)
+      .sort((left, right) => Number(right.combatPower || 0) - Number(left.combatPower || 0) || left.characterName.localeCompare(right.characterName, 'ko')),
+    [rows, clanFilter]
+  );
   const save = async (row) => {
     setSavingId(row.memberId);
     setMessage('');
@@ -6696,13 +6704,24 @@ function CombatPowerPage({ member }) {
       </div>
       {message && <p className="vault-message">{message}</p>}
       <section className="white-card">
+        <div className="table-filter-panel">
+          <label>
+            클랜
+            <select value={clanFilter} onChange={(event) => setClanFilter(event.target.value)}>
+              <option value="all">전체 클랜</option>
+              {clanOptions.map((clan) => <option key={clan} value={clan}>{clan}</option>)}
+            </select>
+          </label>
+          <span className="result-count">전투력 높은 순 · {visibleRows.length}명</span>
+        </div>
         <div className="table-wrap">
           <table className="data-table">
-            <thead><tr><th>클랜원</th><th>전투력</th>{isAdmin && <th>본인 수정 잠금</th>}<th>저장</th></tr></thead>
+            <thead><tr><th>클랜원</th><th>클랜</th><th>전투력 ↓</th>{isAdmin && <th>본인 수정 잠금</th>}<th>저장</th></tr></thead>
             <tbody>
-              {rows.map((row) => (
+              {visibleRows.map((row) => (
                 <tr key={row.memberId}>
                   <td><b>{row.characterName}</b>{row.memberId === member.memberId && <small className="admin-badge">본인</small>}</td>
+                  <td>{row.guildName || '미분류'}</td>
                   <td><input type="number" min="0" value={row.combatPower ?? 0} disabled={!isAdmin && row.locked} onChange={(e) => changeRow(row.memberId, { combatPower: e.target.value })} /></td>
                   {isAdmin && <td><label className="checkbox-line"><input type="checkbox" checked={Boolean(row.locked)} onChange={(e) => changeRow(row.memberId, { locked: e.target.checked })} /> {row.locked ? '잠김' : '수정 허용'}</label></td>}
                   <td><button className="primary-button no-margin" disabled={savingId === row.memberId || (!isAdmin && row.locked)} onClick={() => save(row)}>{savingId === row.memberId ? '저장중...' : row.locked && !isAdmin ? '운영진 잠금' : '저장'}</button></td>
@@ -6781,13 +6800,14 @@ function InventoryPage({ member }) {
       <section className="white-card"><div className="table-wrap"><table className="data-table"><thead><tr><th>아이템</th><th>수량</th><th>위치</th><th>메모(구매/습득자)</th><th>신청 체크</th>{canManage && <th>관리</th>}</tr></thead><tbody>
         {rows.map((row) => {
           const editing = editingId === row.inventoryItemId;
-          const mine = row.requestedByMemberId === member.memberId;
+          const requesters = Array.isArray(row.requesters) ? row.requesters : [];
+          const mine = requesters.some((requester) => requester.memberId === member.memberId);
           return <tr key={row.inventoryItemId}>
             <td>{editing ? <input value={row.itemName} onChange={(e) => updateRow(row.inventoryItemId, { itemName: e.target.value })} /> : row.itemName}</td>
             <td>{editing ? <input type="number" min="0" value={row.quantity} onChange={(e) => updateRow(row.inventoryItemId, { quantity: e.target.value })} /> : formatNumber(row.quantity)}</td>
             <td>{editing ? <input value={row.location || ''} onChange={(e) => updateRow(row.inventoryItemId, { location: e.target.value })} /> : row.location || '-'}</td>
             <td>{editing ? <input value={row.memo || ''} placeholder="누가 샀는지/배웠는지" onChange={(e) => updateRow(row.inventoryItemId, { memo: e.target.value })} /> : row.memo || '-'}</td>
-            <td><button type="button" className={mine ? 'primary-button no-margin' : 'outline-button no-margin'} onClick={() => toggleRequest(row)}>{row.requestedByName ? `✓ ${row.requestedByName}` : '신청 체크'}</button></td>
+            <td><div className="inventory-requesters"><button type="button" className={mine ? 'primary-button no-margin' : 'outline-button no-margin'} onClick={() => toggleRequest(row)}>{mine ? '내 신청 취소' : '신청 체크'}</button><small>{requesters.length ? `신청: ${requesters.map((requester) => requester.characterName).join(', ')}` : '신청자 없음'}</small></div></td>
             {canManage && <td>{editing ? <><button className="primary-button no-margin" onClick={() => saveRow(row)}>저장</button><button className="outline-button no-margin" onClick={() => { setEditingId(null); load(); }}>취소</button></> : <><button className="outline-button no-margin" onClick={() => setEditingId(row.inventoryItemId)}>수정</button><button className="role-button danger" onClick={async () => { if (!window.confirm(`${row.itemName} 재고를 삭제할까요?`)) return; await request(`/management/inventory/${row.inventoryItemId}?adminMemberId=${member.memberId}`, { method: 'DELETE' }); await load(); }}>삭제</button></>}</td>}
           </tr>;
         })}
