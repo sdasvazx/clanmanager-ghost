@@ -30,11 +30,24 @@ public class InventoryItem {
     @Column(length = 255)
     private String memo;
 
+    private Long requestedByMemberId;
+
+    @Column(length = 50)
+    private String requestedByName;
+
     private LocalDateTime createdAt;
+
+    private LocalDateTime updatedAt;
 
     @PrePersist
     public void prePersist() {
         this.quantity = this.quantity == null ? 0 : this.quantity;
         this.createdAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    public void preUpdate() {
+        this.updatedAt = LocalDateTime.now();
     }
 }

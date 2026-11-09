@@ -11,6 +11,8 @@ import com.clanmanager.clanmanager.service.ParticipationService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
 import lombok.Getter;
@@ -61,6 +63,34 @@ public class MemberController {
                 .totalActivityCount(participation.getTotalActivityCount())
                 .participationRate(participation.getParticipationRate())
                 .build();
+    }
+
+    @GetMapping("/combat-powers")
+    public List<CombatPowerRow> getCombatPowers(@RequestParam Long requesterMemberId) {
+        Member requester = findMember(requesterMemberId);
+        List<Member> targets = requester.getRole() == MemberRole.ADMIN
+                ? memberRepository.findByActiveTrueOrderByMemberIdAsc()
+                : List.of(requester);
+        return targets.stream().map(CombatPowerRow::from).toList();
+    }
+
+    @PatchMapping("/{memberId}/combat-power")
+    public CombatPowerRow updateCombatPower(
+            @PathVariable Long memberId,
+            @Valid @RequestBody CombatPowerUpdateRequest request
+    ) {
+        Member actor = findMember(request.getActorMemberId());
+        Member target = findMember(memberId);
+        boolean admin = actor.getRole() == MemberRole.ADMIN;
+        if (!admin && !Objects.equals(actor.getMemberId(), target.getMemberId())) {
+            throw new SecurityException("본인의 전투력만 수정할 수 있습니다.");
+        }
+        if (!admin && Boolean.TRUE.equals(target.getCombatPowerLocked())) {
+            throw new SecurityException("운영진이 전투력 수정을 잠갔습니다.");
+        }
+        target.setCombatPower(request.getCombatPower());
+        if (admin && request.getLocked() != null) target.setCombatPowerLocked(request.getLocked());
+        return CombatPowerRow.from(memberRepository.save(target));
     }
 
     @GetMapping
@@ -627,6 +657,29 @@ public class MemberController {
                 .editedByMemberId(admin.getMemberId())
                 .editedByName(admin.getCharacterName())
                 .build());
+    }
+
+    @Getter
+    @Setter
+    public static class CombatPowerUpdateRequest {
+        @NotNull(message = "수정자 정보가 필요합니다.")
+        private Long actorMemberId;
+        @NotNull(message = "전투력을 입력해 주세요.")
+        @Min(value = 0, message = "전투력은 0 이상이어야 합니다.")
+        @Max(value = 999999999, message = "전투력이 너무 큽니다.")
+        private Integer combatPower;
+        private Boolean locked;
+    }
+
+    public record CombatPowerRow(Long memberId, String characterName, Integer combatPower, boolean locked) {
+        static CombatPowerRow from(Member member) {
+            return new CombatPowerRow(
+                    member.getMemberId(),
+                    member.getCharacterName(),
+                    member.getCombatPower(),
+                    Boolean.TRUE.equals(member.getCombatPowerLocked())
+            );
+        }
     }
 
     @Getter

@@ -34,9 +34,9 @@ const menu = [
   ['payment', '분', '분배금 조회'],
   ['ledger', '통', '통장현황'],
   ['book', '장', '장부 조회'],
+  ['combat-power', '투', '전투력 설정'],
   ['inventory', '재', '재고현황'],
-  ['bidding', '아', '아이템입찰'],
-  ['collection', '컬', '컬렉템 지급현황'],
+  ['collection', '컬', '스킬북/컬렉템 지급현황'],
   ['mypage', '마', '마이페이지'],
   ['admin', '관', '관리자 설정'],
 ];
@@ -1217,22 +1217,6 @@ function ForcedPasswordChangeScreen({ member, onComplete, onLogout }) {
         }),
       });
       onComplete({ ...member, mustChangePassword: false });
-    } catch (err) {
-      setMessage(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const resetVaultHistory = async () => {
-    if (!window.confirm('통장 입금·분배·출금 내역과 모든 클랜원의 잔액을 전부 0으로 초기화할까요?\n\n삭제된 내역은 복구할 수 없습니다.')) return;
-    setLoading(true);
-    setMessage('');
-    try {
-      const result = await request(`/vault/reset?adminMemberId=${member.memberId}`, { method: 'DELETE' });
-      setHistory(null);
-      await load();
-      setMessage(`통장 내역 초기화 완료: 거래 ${result.deletedTransactions ?? 0}건을 삭제했습니다.`);
     } catch (err) {
       setMessage(err.message);
     } finally {
@@ -5431,6 +5415,22 @@ function ClanVaultPage({ member, readonly = false }) {
     }
   };
 
+  const resetVaultHistory = async () => {
+    if (!window.confirm('통장 입금·분배·출금 내역과 모든 클랜원의 잔액을 전부 0으로 초기화할까요?\n\n삭제된 내역은 복구할 수 없습니다.')) return;
+    setLoading(true);
+    setMessage('');
+    try {
+      const result = await request(`/vault/reset?adminMemberId=${member.memberId}`, { method: 'DELETE' });
+      setHistory(null);
+      await load();
+      setMessage(`통장 내역 초기화 완료: 거래 ${result.deletedTransactions ?? 0}건을 삭제했습니다.`);
+    } catch (err) {
+      setMessage(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <>
       <section className="vault-hero">
@@ -6662,6 +6662,60 @@ function PaymentClaimPage({ member }) {
   );
 }
 
+function CombatPowerPage({ member }) {
+  const [rows, setRows] = useState([]);
+  const [message, setMessage] = useState('');
+  const [savingId, setSavingId] = useState(null);
+  const isAdmin = member.role === 'ADMIN';
+  const load = () => request(`/members/combat-powers?requesterMemberId=${member.memberId}`).then(setRows).catch((err) => setMessage(err.message));
+  useEffect(() => {
+    load();
+  }, []);
+  const changeRow = (memberId, patch) => setRows((current) => current.map((row) => (row.memberId === memberId ? { ...row, ...patch } : row)));
+  const save = async (row) => {
+    setSavingId(row.memberId);
+    setMessage('');
+    try {
+      const saved = await request(`/members/${row.memberId}/combat-power`, {
+        method: 'PATCH',
+        body: JSON.stringify({ actorMemberId: member.memberId, combatPower: Number(row.combatPower || 0), locked: isAdmin ? Boolean(row.locked) : null }),
+      });
+      changeRow(row.memberId, saved);
+      setMessage(`${row.characterName} 전투력을 저장했습니다.`);
+    } catch (err) {
+      setMessage(err.message);
+    } finally {
+      setSavingId(null);
+    }
+  };
+  return (
+    <>
+      <div className="page-title">
+        <h1>전투력 설정</h1>
+        <p>{isAdmin ? '운영진은 전체 클랜원의 전투력을 확인·수정하고 개인 수정을 잠글 수 있습니다.' : '본인의 전투력만 확인하고 수정할 수 있습니다.'}</p>
+      </div>
+      {message && <p className="vault-message">{message}</p>}
+      <section className="white-card">
+        <div className="table-wrap">
+          <table className="data-table">
+            <thead><tr><th>클랜원</th><th>전투력</th>{isAdmin && <th>본인 수정 잠금</th>}<th>저장</th></tr></thead>
+            <tbody>
+              {rows.map((row) => (
+                <tr key={row.memberId}>
+                  <td><b>{row.characterName}</b>{row.memberId === member.memberId && <small className="admin-badge">본인</small>}</td>
+                  <td><input type="number" min="0" value={row.combatPower ?? 0} disabled={!isAdmin && row.locked} onChange={(e) => changeRow(row.memberId, { combatPower: e.target.value })} /></td>
+                  {isAdmin && <td><label className="checkbox-line"><input type="checkbox" checked={Boolean(row.locked)} onChange={(e) => changeRow(row.memberId, { locked: e.target.checked })} /> {row.locked ? '잠김' : '수정 허용'}</label></td>}
+                  <td><button className="primary-button no-margin" disabled={savingId === row.memberId || (!isAdmin && row.locked)} onClick={() => save(row)}>{savingId === row.memberId ? '저장중...' : row.locked && !isAdmin ? '운영진 잠금' : '저장'}</button></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </>
+  );
+}
+
 function InventoryPage({ member }) {
   const [rows, setRows] = useState([]);
   const [form, setForm] = useState({
@@ -6670,6 +6724,8 @@ function InventoryPage({ member }) {
     location: '클랜창고',
     memo: '',
   });
+  const [editingId, setEditingId] = useState(null);
+  const [message, setMessage] = useState('');
   const canManage = member.role === 'ADMIN';
   const load = () =>
     request('/management/inventory')
@@ -6691,12 +6747,29 @@ function InventoryPage({ member }) {
     setForm({ itemName: '', quantity: 1, location: '클랜창고', memo: '' });
     await load();
   };
+  const updateRow = (id, patch) => setRows((current) => current.map((row) => (row.inventoryItemId === id ? { ...row, ...patch } : row)));
+  const saveRow = async (row) => {
+    try {
+      await request(`/management/inventory/${row.inventoryItemId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ itemName: row.itemName, quantity: Number(row.quantity || 0), location: row.location, memo: row.memo, adminMemberId: member.memberId }),
+      });
+      setEditingId(null);
+      setMessage('재고 내용을 수정했습니다.');
+      await load();
+    } catch (err) { setMessage(err.message); }
+  };
+  const toggleRequest = async (row) => {
+    try {
+      await request(`/management/inventory/${row.inventoryItemId}/request-check?memberId=${member.memberId}`, { method: 'PATCH' });
+      await load();
+    } catch (err) { setMessage(err.message); }
+  };
   return (
-    <CrudPage
-      title="재고현황"
-      description="클랜 보유 아이템과 수량을 조회합니다."
-      canManage={canManage}
-      form={
+    <>
+      <div className="page-title"><h1>재고현황</h1><p>클랜 보유 아이템을 확인하고 신청 여부를 표시합니다. 등록·수정·삭제는 운영진만 가능합니다.</p></div>
+      {message && <p className="vault-message">{message}</p>}
+      {canManage && <section className="white-card">
         <form className="record-form" onSubmit={add}>
           <input required placeholder="아이템명" value={form.itemName} onChange={(e) => setForm({ ...form, itemName: e.target.value })} />
           <input required type="number" min="0" value={form.quantity} onChange={(e) => setForm({ ...form, quantity: e.target.value })} />
@@ -6704,16 +6777,22 @@ function InventoryPage({ member }) {
           <input placeholder="메모" value={form.memo} onChange={(e) => setForm({ ...form, memo: e.target.value })} />
           <button className="primary-button">추가</button>
         </form>
-      }
-      rows={rows}
-      getId={(row) => row.inventoryItemId}
-      columns={['아이템', '수량', '위치', '메모', '등록일']}
-      render={(row) => [row.itemName, formatNumber(row.quantity), row.location || '-', row.memo || '-', new Date(row.createdAt).toLocaleDateString('ko-KR')]}
-      onDelete={async (id) => {
-        await request(`/management/inventory/${id}?adminMemberId=${member.memberId}`, { method: 'DELETE' });
-        await load();
-      }}
-    />
+      </section>}
+      <section className="white-card"><div className="table-wrap"><table className="data-table"><thead><tr><th>아이템</th><th>수량</th><th>위치</th><th>메모(구매/습득자)</th><th>신청 체크</th>{canManage && <th>관리</th>}</tr></thead><tbody>
+        {rows.map((row) => {
+          const editing = editingId === row.inventoryItemId;
+          const mine = row.requestedByMemberId === member.memberId;
+          return <tr key={row.inventoryItemId}>
+            <td>{editing ? <input value={row.itemName} onChange={(e) => updateRow(row.inventoryItemId, { itemName: e.target.value })} /> : row.itemName}</td>
+            <td>{editing ? <input type="number" min="0" value={row.quantity} onChange={(e) => updateRow(row.inventoryItemId, { quantity: e.target.value })} /> : formatNumber(row.quantity)}</td>
+            <td>{editing ? <input value={row.location || ''} onChange={(e) => updateRow(row.inventoryItemId, { location: e.target.value })} /> : row.location || '-'}</td>
+            <td>{editing ? <input value={row.memo || ''} placeholder="누가 샀는지/배웠는지" onChange={(e) => updateRow(row.inventoryItemId, { memo: e.target.value })} /> : row.memo || '-'}</td>
+            <td><button type="button" className={mine ? 'primary-button no-margin' : 'outline-button no-margin'} onClick={() => toggleRequest(row)}>{row.requestedByName ? `✓ ${row.requestedByName}` : '신청 체크'}</button></td>
+            {canManage && <td>{editing ? <><button className="primary-button no-margin" onClick={() => saveRow(row)}>저장</button><button className="outline-button no-margin" onClick={() => { setEditingId(null); load(); }}>취소</button></> : <><button className="outline-button no-margin" onClick={() => setEditingId(row.inventoryItemId)}>수정</button><button className="role-button danger" onClick={async () => { if (!window.confirm(`${row.itemName} 재고를 삭제할까요?`)) return; await request(`/management/inventory/${row.inventoryItemId}?adminMemberId=${member.memberId}`, { method: 'DELETE' }); await load(); }}>삭제</button></>}</td>}
+          </tr>;
+        })}
+      </tbody></table></div>{!rows.length && <div className="empty-state">등록된 재고가 없습니다.</div>}</section>
+    </>
   );
 }
 
@@ -7234,7 +7313,7 @@ function CollectionPage({ member }) {
   return (
     <>
       <div className="page-title">
-        <h1>컬렉템 지급현황</h1>
+        <h1>스킬북/컬렉템 지급현황</h1>
         <p>컬렉션/스킬 지급 여부를 체크하고, 누가 언제 수정했는지 로그로 남깁니다.</p>
       </div>
       <section className="white-card collection-toolbar">
@@ -7457,7 +7536,7 @@ function CollectionPage({ member }) {
         </div>
         {!data.members.length && <div className="empty-state">등록된 클랜원이 없습니다.</div>}
         {!data.items.length && <div className="empty-state">등록된 컬렉템 항목이 없습니다. 위에서 항목을 먼저 추가하세요.</div>}
-        {!!data.members.length && !!data.items.length && (!visibleMembers.length || !visibleItems.length) && <div className="empty-state">현재 필터에 맞는 컬렉템 지급현황이 없습니다.</div>}
+        {!!data.members.length && !!data.items.length && (!visibleMembers.length || !visibleItems.length) && <div className="empty-state">현재 필터에 맞는 스킬북/컬렉템 지급현황이 없습니다.</div>}
       </section>
       <section className="white-card collection-log-card collapsible">
         <button type="button" className="collection-log-toggle" onClick={() => setShowLogs(!showLogs)}>
@@ -9575,7 +9654,7 @@ export default function App() {
         <AccessDenied />
       </Shell>
     );
-  const view = page === 'lobby' ? <Lobby member={member} setPage={setPage} favoritePages={visibleFavoritePages} /> : page === 'my-info' ? <MyInfo member={member} setPage={setPage} /> : page === 'participation' ? <Participation member={member} setPage={setPage} /> : page === 'attendance' ? <Attendance member={member} setPage={setPage} mode="check" /> : page === 'boss-history' ? <Attendance member={member} setPage={setPage} mode="history" /> : page === 'payment' ? member.role === 'ADMIN' ? <DistributionAdminPage member={member} /> : <PaymentClaimPage member={member} /> : page === 'ledger' ? <ClanVaultPage member={member} /> : page === 'book' ? <ClanVaultPage member={member} readonly /> : page === 'inventory' ? <InventoryPage member={member} /> : page === 'all-items' ? <AllItemsPage member={member} setPage={setPage} /> : page === 'bidding' ? <BiddingPage member={member} /> : page === 'collection' ? <CollectionPage member={member} /> : page === 'item-request' ? <ItemRequestPage member={member} /> : page === 'spec-history' ? <SpecHistoryPage setPage={setPage} /> : page === 'activity-settings' ? <ActivitySettingsPage member={member} setPage={setPage} /> : page === 'general-settings' ? <GeneralSettingsPage member={member} setPage={setPage} /> : page === 'roster' ? <RosterScanAdmin setPage={setPage} /> : page === 'pinball' ? <PinballPage setPage={setPage} /> : page === 'mypage' ? <MyPage member={member} setPage={setPage} favoritePages={visibleFavoritePages} onMemberUpdate={updateCurrentMember} /> : page === 'admin' ? <Admin member={member} setPage={setPage} onMemberUpdate={updateCurrentMember} favorites={favorites} toggleFavorite={toggleFavorite} /> : page === 'member-admin' ? <MemberAdminPage member={member} setPage={setPage} onMemberUpdate={updateCurrentMember} /> : <Lobby member={member} setPage={setPage} favoritePages={visibleFavoritePages} />;
+  const view = page === 'lobby' ? <Lobby member={member} setPage={setPage} favoritePages={visibleFavoritePages} /> : page === 'my-info' ? <MyInfo member={member} setPage={setPage} /> : page === 'participation' ? <Participation member={member} setPage={setPage} /> : page === 'attendance' ? <Attendance member={member} setPage={setPage} mode="check" /> : page === 'boss-history' ? <Attendance member={member} setPage={setPage} mode="history" /> : page === 'payment' ? member.role === 'ADMIN' ? <DistributionAdminPage member={member} /> : <PaymentClaimPage member={member} /> : page === 'ledger' ? <ClanVaultPage member={member} /> : page === 'book' ? <ClanVaultPage member={member} readonly /> : page === 'combat-power' ? <CombatPowerPage member={member} /> : page === 'inventory' ? <InventoryPage member={member} /> : page === 'all-items' ? <AllItemsPage member={member} setPage={setPage} /> : page === 'collection' ? <CollectionPage member={member} /> : page === 'item-request' ? <ItemRequestPage member={member} /> : page === 'spec-history' ? <SpecHistoryPage setPage={setPage} /> : page === 'activity-settings' ? <ActivitySettingsPage member={member} setPage={setPage} /> : page === 'general-settings' ? <GeneralSettingsPage member={member} setPage={setPage} /> : page === 'roster' ? <RosterScanAdmin setPage={setPage} /> : page === 'pinball' ? <PinballPage setPage={setPage} /> : page === 'mypage' ? <MyPage member={member} setPage={setPage} favoritePages={visibleFavoritePages} onMemberUpdate={updateCurrentMember} /> : page === 'admin' ? <Admin member={member} setPage={setPage} onMemberUpdate={updateCurrentMember} favorites={favorites} toggleFavorite={toggleFavorite} /> : page === 'member-admin' ? <MemberAdminPage member={member} setPage={setPage} onMemberUpdate={updateCurrentMember} /> : <Lobby member={member} setPage={setPage} favoritePages={visibleFavoritePages} />;
   return (
     <Shell member={member} page={page} setPage={setPage} onLogout={logout} favorites={favorites} toggleFavorite={toggleFavorite}>
       {view}
