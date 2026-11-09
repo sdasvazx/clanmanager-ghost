@@ -32,6 +32,9 @@ public class Member {
     @Column(nullable = false)
     private Integer combatPower;
 
+    @Column(name = "combat_power_locked", nullable = false, columnDefinition = "boolean default false")
+    private Boolean combatPowerLocked;
+
     @Column(length = 30)
     private String guildName;
 
@@ -60,6 +63,7 @@ public class Member {
     @PrePersist
     public void prePersist() {
         this.combatPower = this.combatPower == null ? 0 : this.combatPower;
+        this.combatPowerLocked = this.combatPowerLocked == null ? false : this.combatPowerLocked;
         this.level = this.level == null ? 0 : this.level;
         this.role = this.role == null ? MemberRole.MEMBER : this.role;
         this.active = this.active == null ? true : this.active;

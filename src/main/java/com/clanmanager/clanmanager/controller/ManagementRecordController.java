@@ -102,6 +102,41 @@ public class ManagementRecordController {
                 .build());
     }
 
+    @PatchMapping("/inventory/{itemId}")
+    public InventoryItem updateInventory(
+            @PathVariable Long itemId,
+            @Valid @RequestBody InventoryRequest request
+    ) {
+        validateAdmin(request.getAdminMemberId());
+        InventoryItem item = inventoryItemRepository.findById(itemId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 재고입니다."));
+        item.setItemName(request.getItemName());
+        item.setQuantity(request.getQuantity());
+        item.setLocation(request.getLocation());
+        item.setMemo(request.getMemo());
+        return inventoryItemRepository.save(item);
+    }
+
+    @PatchMapping("/inventory/{itemId}/request-check")
+    public InventoryItem toggleInventoryRequest(
+            @PathVariable Long itemId,
+            @RequestParam Long memberId
+    ) {
+        Member member = memberRepository.findById(memberId)
+                .filter(target -> Boolean.TRUE.equals(target.getActive()))
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 클랜원입니다."));
+        InventoryItem item = inventoryItemRepository.findById(itemId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 재고입니다."));
+        if (memberId.equals(item.getRequestedByMemberId())) {
+            item.setRequestedByMemberId(null);
+            item.setRequestedByName(null);
+        } else {
+            item.setRequestedByMemberId(memberId);
+            item.setRequestedByName(member.getCharacterName());
+        }
+        return inventoryItemRepository.save(item);
+    }
+
     @DeleteMapping("/inventory/{itemId}")
     public Map<String, Object> deleteInventory(@PathVariable Long itemId, @RequestParam Long adminMemberId) {
         validateAdmin(adminMemberId);
