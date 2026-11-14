@@ -6667,10 +6667,14 @@ function CombatPowerPage({ member }) {
   const [message, setMessage] = useState('');
   const [savingId, setSavingId] = useState(null);
   const [clanFilter, setClanFilter] = useState('all');
+  const [updateEnabled, setUpdateEnabled] = useState(false);
   const isAdmin = member.role === 'ADMIN';
-  const load = () => request(`/members/combat-powers?requesterMemberId=${member.memberId}`).then(setRows).catch((err) => setMessage(err.message));
+  const loadSetting = () => request('/members/combat-power-update').then((data) => setUpdateEnabled(Boolean(data.enabled)));
+  const load = () => Promise.all([request('/members/combat-powers').then(setRows), loadSetting()]).catch((err) => setMessage(err.message));
   useEffect(() => {
     load();
+    const timer = window.setInterval(() => loadSetting().catch(() => {}), 15000);
+    return () => window.clearInterval(timer);
   }, []);
   const changeRow = (memberId, patch) => setRows((current) => current.map((row) => (row.memberId === memberId ? { ...row, ...patch } : row)));
   const clanOptions = useMemo(() => Array.from(new Set(rows.map((row) => row.guildName || '미분류'))).sort((a, b) => a.localeCompare(b, 'ko')), [rows]);
@@ -6681,6 +6685,10 @@ function CombatPowerPage({ member }) {
     [rows, clanFilter]
   );
   const save = async (row) => {
+    if (!isAdmin && !updateEnabled) {
+      setMessage('관리자가 공격력 업데이트를 껐습니다.');
+      return;
+    }
     setSavingId(row.memberId);
     setMessage('');
     try {
@@ -6696,12 +6704,28 @@ function CombatPowerPage({ member }) {
       setSavingId(null);
     }
   };
+  const toggleUpdate = async () => {
+    const next = !updateEnabled;
+    if (!window.confirm(next ? '일반 혈원의 본인 공격력 업데이트를 켤까요? 다시 끌 때까지 유지됩니다.' : '일반 혈원의 공격력 업데이트를 끌까요? 열어 둔 화면에서도 저장할 수 없습니다.')) return;
+    setSavingId('setting');
+    setMessage('');
+    try {
+      const saved = await request(`/members/combat-power-update?enabled=${next}`, { method: 'PATCH' });
+      setUpdateEnabled(Boolean(saved.enabled));
+      setMessage(`공격력 업데이트를 ${saved.enabled ? '켰습니다.' : '껐습니다.'}`);
+    } catch (err) {
+      setMessage(err.message);
+    } finally {
+      setSavingId(null);
+    }
+  };
   return (
     <>
-      <div className="page-title">
-        <h1>전투력 설정</h1>
-        <p>{isAdmin ? '운영진은 전체 클랜원의 전투력을 확인·수정하고 개인 수정을 잠글 수 있습니다.' : '본인의 전투력만 확인하고 수정할 수 있습니다.'}</p>
+      <div className="page-title with-actions">
+        <div><h1>전투력 설정</h1><p>{isAdmin ? '운영진은 전체 클랜원의 전투력을 확인·수정하고 개인 수정을 잠글 수 있습니다.' : '본인의 전투력만 확인하고 수정할 수 있습니다.'}</p></div>
+        {isAdmin && <button className="primary-button no-margin" disabled={savingId === 'setting'} onClick={toggleUpdate}>{updateEnabled ? '공격력 업데이트 끄기' : '공격력 업데이트 켜기'}</button>}
       </div>
+      <p className="info-box">일반 혈원 본인 수정: {updateEnabled ? '켜짐 · 관리자가 끌 때까지 유지' : '꺼짐'}</p>
       {message && <p className="vault-message">{message}</p>}
       <section className="white-card">
         <div className="table-filter-panel">
@@ -6722,9 +6746,9 @@ function CombatPowerPage({ member }) {
                 <tr key={row.memberId}>
                   <td><b>{row.characterName}</b>{row.memberId === member.memberId && <small className="admin-badge">본인</small>}</td>
                   <td>{row.guildName || '미분류'}</td>
-                  <td><input type="number" min="0" value={row.combatPower ?? 0} disabled={!isAdmin && row.locked} onChange={(e) => changeRow(row.memberId, { combatPower: e.target.value })} /></td>
+                  <td><input type="number" min="0" value={row.combatPower ?? 0} disabled={!isAdmin && (!updateEnabled || row.locked)} onChange={(e) => changeRow(row.memberId, { combatPower: e.target.value })} /></td>
                   {isAdmin && <td><label className="checkbox-line"><input type="checkbox" checked={Boolean(row.locked)} onChange={(e) => changeRow(row.memberId, { locked: e.target.checked })} /> {row.locked ? '잠김' : '수정 허용'}</label></td>}
-                  <td><button className="primary-button no-margin" disabled={savingId === row.memberId || (!isAdmin && row.locked)} onClick={() => save(row)}>{savingId === row.memberId ? '저장중...' : row.locked && !isAdmin ? '운영진 잠금' : '저장'}</button></td>
+                  <td><button className="primary-button no-margin" disabled={savingId === row.memberId || (!isAdmin && (!updateEnabled || row.locked))} onClick={() => save(row)}>{savingId === row.memberId ? '저장중...' : !isAdmin && !updateEnabled ? '업데이트 꺼짐' : row.locked && !isAdmin ? '운영진 잠금' : '저장'}</button></td>
                 </tr>
               ))}
             </tbody>
