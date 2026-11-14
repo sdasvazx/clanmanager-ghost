@@ -4,6 +4,8 @@ import com.clanmanager.clanmanager.dto.MemberInfoResponseDto;
 import com.clanmanager.clanmanager.entity.Member;
 import com.clanmanager.clanmanager.entity.MemberRole;
 import com.clanmanager.clanmanager.entity.MemberSpecHistory;
+import com.clanmanager.clanmanager.entity.CombatPowerUpdateSetting;
+import com.clanmanager.clanmanager.repository.CombatPowerUpdateSettingRepository;
 import com.clanmanager.clanmanager.repository.MemberRepository;
 import com.clanmanager.clanmanager.repository.MemberSpecHistoryRepository;
 import com.clanmanager.clanmanager.security.PasswordSupport;
@@ -18,6 +20,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -45,6 +48,7 @@ public class MemberController {
     private final MemberSpecHistoryRepository memberSpecHistoryRepository;
     private final ParticipationService participationService;
     private final JdbcTemplate jdbcTemplate;
+    private final CombatPowerUpdateSettingRepository combatPowerUpdateSettingRepository;
 
     @GetMapping("/{memberId}/my-info")
     public MemberInfoResponseDto getMyInfo(@PathVariable Long memberId) {
@@ -66,12 +70,28 @@ public class MemberController {
     }
 
     @GetMapping("/combat-powers")
-    public List<CombatPowerRow> getCombatPowers(@RequestParam Long requesterMemberId) {
-        Member requester = findMember(requesterMemberId);
+    public List<CombatPowerRow> getCombatPowers() {
+        Member requester = currentMember();
         List<Member> targets = requester.getRole() == MemberRole.ADMIN
                 ? memberRepository.findByActiveTrueOrderByMemberIdAsc()
                 : List.of(requester);
         return targets.stream().map(CombatPowerRow::from).toList();
+    }
+
+    @GetMapping("/combat-power-update")
+    public Map<String, Boolean> getCombatPowerUpdateSetting() {
+        currentMember();
+        return Map.of("enabled", combatPowerUpdateEnabled());
+    }
+
+    @PatchMapping("/combat-power-update")
+    public Map<String, Boolean> setCombatPowerUpdateSetting(@RequestParam boolean enabled) {
+        Member actor = currentMember();
+        if (actor.getRole() != MemberRole.ADMIN) {
+            throw new SecurityException("운영자만 공격력 업데이트를 켜거나 끌 수 있습니다.");
+        }
+        combatPowerUpdateSettingRepository.save(CombatPowerUpdateSetting.builder().settingId(1L).enabled(enabled).build());
+        return Map.of("enabled", enabled);
     }
 
     @PatchMapping("/{memberId}/combat-power")
@@ -79,18 +99,24 @@ public class MemberController {
             @PathVariable Long memberId,
             @Valid @RequestBody CombatPowerUpdateRequest request
     ) {
-        Member actor = findMember(request.getActorMemberId());
+        Member actor = currentMember();
         Member target = findMember(memberId);
         boolean admin = actor.getRole() == MemberRole.ADMIN;
-        if (!admin && !Objects.equals(actor.getMemberId(), target.getMemberId())) {
-            throw new SecurityException("본인의 전투력만 수정할 수 있습니다.");
-        }
-        if (!admin && Boolean.TRUE.equals(target.getCombatPowerLocked())) {
-            throw new SecurityException("운영진이 전투력 수정을 잠갔습니다.");
-        }
+        requireCombatPowerEditAllowed(admin, Objects.equals(actor.getMemberId(), target.getMemberId()),
+                Boolean.TRUE.equals(target.getCombatPowerLocked()), combatPowerUpdateEnabled());
+        String previousName = target.getCharacterName();
+        Integer previousCombatPower = target.getCombatPower();
+        Integer previousLevel = target.getLevel();
+        String previousGuildName = target.getGuildName();
+        String previousCharacterClass = target.getCharacterClass();
+        String previousRank = target.getRank();
+        String previousStatus = target.getStatus();
         target.setCombatPower(request.getCombatPower());
         if (admin && request.getLocked() != null) target.setCombatPowerLocked(request.getLocked());
-        return CombatPowerRow.from(memberRepository.save(target));
+        Member saved = memberRepository.save(target);
+        saveSpecHistoryIfChanged(saved, actor, previousName, previousCombatPower, previousLevel,
+                previousGuildName, previousCharacterClass, previousRank, previousStatus);
+        return CombatPowerRow.from(saved);
     }
 
     @GetMapping
@@ -591,6 +617,31 @@ public class MemberController {
     private Member findMember(Long memberId) {
         return memberRepository.findById(memberId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다."));
+    }
+
+    private Member currentMember() {
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated() || !authentication.getName().matches("[0-9]+")) {
+            throw new SecurityException("로그인이 필요합니다.");
+        }
+        Member member = findMember(Long.valueOf(authentication.getName()));
+        if (!Boolean.TRUE.equals(member.getActive())) {
+            throw new SecurityException("활성 회원만 사용할 수 있습니다.");
+        }
+        return member;
+    }
+
+    private boolean combatPowerUpdateEnabled() {
+        return combatPowerUpdateSettingRepository.findById(1L)
+                .map(setting -> Boolean.TRUE.equals(setting.getEnabled()))
+                .orElse(false);
+    }
+
+    static void requireCombatPowerEditAllowed(boolean admin, boolean self, boolean locked, boolean updateEnabled) {
+        if (admin) return;
+        if (!self) throw new SecurityException("본인의 전투력만 수정할 수 있습니다.");
+        if (locked) throw new SecurityException("운영진이 전투력 수정을 잠갔습니다.");
+        if (!updateEnabled) throw new SecurityException("관리자가 공격력 업데이트를 껐습니다.");
     }
 
     private Member requireAdmin(Long memberId) {
